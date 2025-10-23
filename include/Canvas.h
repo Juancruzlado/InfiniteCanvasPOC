@@ -24,6 +24,12 @@ public:
     // Clear all strokes
     void clear();
     
+    // Undo/Redo operations
+    void undo();
+    void redo();
+    bool canUndo() const { return !history.empty() && historyIndex > 0; }
+    bool canRedo() const { return !history.empty() && historyIndex < history.size() - 1; }
+    
     // Render all strokes
     void render(VectorRenderer& renderer);
     
@@ -33,8 +39,16 @@ public:
     bool isDrawing() const { return currentStroke != nullptr; }
     
 private:
+    void saveToHistory();
+    void loadFromHistory(size_t index);
+    
     std::vector<std::shared_ptr<Stroke>> strokes;
     std::shared_ptr<Stroke> currentStroke;
+    
+    // History for undo/redo (max 7 states)
+    static constexpr size_t MAX_HISTORY = 7;
+    std::vector<std::vector<std::shared_ptr<Stroke>>> history;
+    size_t historyIndex = 0;
 };
 
 } // namespace VectorSketch

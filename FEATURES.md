@@ -1,6 +1,45 @@
 # Funcionalidades Implementadas
 
-## ✅ Tool Wheel UI (NUEVO - Estilo Concepts App)
+## ✅ Undo/Redo System (NUEVO)
+
+### Descripción
+Sistema de historial con límite de 7 estados para deshacer y rehacer cambios en el canvas.
+
+### Características
+- **Ctrl+Z**: Deshacer última acción
+- **Ctrl+Shift+Z**: Rehacer acción deshecha
+- **Historial limitado**: Máximo 7 estados guardados
+- **Deep copy**: Cada estado es una copia independiente
+- **Gestión automática**: Se guarda al completar cada trazo
+
+### Implementación
+```cpp
+// Guarda snapshot después de cada trazo
+void Canvas::endStroke() {
+    strokes.push_back(currentStroke);
+    saveToHistory();  // Snapshot del estado actual
+}
+
+// Navega por el historial
+void Canvas::undo() {
+    historyIndex--;
+    loadFromHistory(historyIndex);
+}
+
+void Canvas::redo() {
+    historyIndex++;
+    loadFromHistory(historyIndex);
+}
+```
+
+### Gestión de Memoria
+- Máximo 7 snapshots en memoria
+- Deep copy de cada Stroke (posición, grosor, color)
+- Elimina estados futuros al hacer nueva acción después de undo
+
+---
+
+## ✅ Tool Wheel UI (Estilo Concepts App)
 
 ### Descripción
 UI wheel circular en la esquina superior izquierda, inspirada en Concepts App, que permite seleccionar herramientas y ajustar parámetros en tiempo real.
@@ -139,6 +178,8 @@ void VectorRenderer::zoom(float factor, const glm::vec2& center) {
 | **Dibujar** | Click izquierdo + arrastrar |
 | **Pan** | Click medio/derecho + arrastrar |
 | **Zoom** | Rueda del mouse |
+| **Deshacer** | `Ctrl+Z` (hasta 7 acciones) |
+| **Rehacer** | `Ctrl+Shift+Z` |
 | **Limpiar** | Tecla `C` |
 | **Reset** | Tecla `R` |
 | **Salir** | Tecla `ESC` |
@@ -177,7 +218,7 @@ MVP Transform → GPU Rendering → Screen
 - [ ] Selector de color interactivo
 - [ ] Panel de herramientas (brush, pen, eraser)
 - [ ] Múltiples capas (layers)
-- [ ] Sistema de undo/redo
+- [x] Sistema de undo/redo (✅ COMPLETADO)
 
 ### Export/Import
 - [ ] Guardar canvas (formato JSON/custom)

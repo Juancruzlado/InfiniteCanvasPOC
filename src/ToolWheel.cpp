@@ -1,12 +1,13 @@
 #include "ToolWheel.h"
 #include "imgui.h"
 #include <cmath>
+#include <string>
 
 namespace VectorSketch {
 
 ToolWheel::ToolWheel() 
     : currentTool(ToolType::BRUSH),
-      brushWidth(3.0f),
+      brushWidth(5.2f),
       mouseOverUI(false),
       wheelVisible(true) {
 }
@@ -14,105 +15,164 @@ ToolWheel::ToolWheel()
 void ToolWheel::render(int windowWidth, int windowHeight) {
     mouseOverUI = false;
     
-    // Set up ImGui window in top-left corner
-    ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(200, 250), ImGuiCond_Always);
+    ImDrawList* draw_list = ImGui::GetForegroundDrawList();
     
-    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoResize | 
-                                    ImGuiWindowFlags_NoMove |
-                                    ImGuiWindowFlags_NoCollapse;
+    // Wheel position (top-left corner)
+    ImVec2 center = ImVec2(100, 100);
+    float outer_radius = 70.0f;
+    float inner_radius = 30.0f;
+    float center_circle_radius = 25.0f;
     
-    if (ImGui::Begin("Tool Wheel", &wheelVisible, window_flags)) {
-        mouseOverUI = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | 
-                                             ImGuiHoveredFlags_ChildWindows);
+    // Check if mouse is over the wheel
+    ImVec2 mouse_pos = ImGui::GetMousePos();
+    float dist_to_center = sqrtf(
+        (mouse_pos.x - center.x) * (mouse_pos.x - center.x) + 
+        (mouse_pos.y - center.y) * (mouse_pos.y - center.y)
+    );
+    bool mouse_over_wheel = dist_to_center < outer_radius;
+    mouseOverUI = mouse_over_wheel;
+    
+    // ===== Draw the wheel =====
+    
+    // Outer ring (light gray background)
+    draw_list->AddCircleFilled(center, outer_radius, IM_COL32(220, 220, 220, 255), 64);
+    
+    // Inner circle (darker gray)
+    draw_list->AddCircleFilled(center, center_circle_radius, IM_COL32(180, 180, 180, 255), 64);
+    
+    // ===== Brush Tool Segment (top, black) =====
+    float brush_angle_start = -M_PI / 2.0f - M_PI / 8.0f;
+    float brush_angle_end = -M_PI / 2.0f + M_PI / 8.0f;
+    
+    // Draw brush segment as filled arc
+    const int segments = 32;
+    ImVec2 prev_outer, prev_inner;
+    
+    for (int i = 0; i <= segments; i++) {
+        float t = (float)i / (float)segments;
+        float angle = brush_angle_start + t * (brush_angle_end - brush_angle_start);
         
-        // Title
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Tools");
-        ImGui::Separator();
-        ImGui::Spacing();
+        float x_outer = center.x + cosf(angle) * outer_radius;
+        float y_outer = center.y + sinf(angle) * outer_radius;
+        float x_inner = center.x + cosf(angle) * inner_radius;
+        float y_inner = center.y + sinf(angle) * inner_radius;
         
-        // Draw circular tool wheel
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        ImVec2 window_pos = ImGui::GetCursorScreenPos();
-        ImVec2 center = ImVec2(window_pos.x + 90, window_pos.y + 60);
-        float radius = 50.0f;
-        
-        // Draw outer circle
-        draw_list->AddCircleFilled(center, radius, IM_COL32(240, 240, 240, 255), 32);
-        draw_list->AddCircle(center, radius, IM_COL32(150, 150, 150, 255), 32, 2.0f);
-        
-        // Draw inner circle
-        draw_list->AddCircleFilled(center, 15.0f, IM_COL32(200, 200, 200, 255), 32);
-        
-        // Brush tool section (top segment, black like in Concepts)
-        float angle_start = -M_PI / 2.0f - M_PI / 6.0f;  // Start from top-left
-        float angle_end = -M_PI / 2.0f + M_PI / 6.0f;    // End at top-right
-        
-        // Draw brush segment
-        const int num_segments = 16;
-        ImVec2 brush_center = center;
-        
-        for (int i = 0; i <= num_segments; i++) {
-            float t = (float)i / (float)num_segments;
-            float angle = angle_start + t * (angle_end - angle_start);
-            
-            float x1 = brush_center.x + cosf(angle) * 15.0f;
-            float y1 = brush_center.y + sinf(angle) * 15.0f;
-            float x2 = brush_center.x + cosf(angle) * radius;
-            float y2 = brush_center.y + sinf(angle) * radius;
-            
-            if (i < num_segments) {
-                float next_angle = angle_start + ((float)(i+1) / (float)num_segments) * (angle_end - angle_start);
-                float x3 = brush_center.x + cosf(next_angle) * radius;
-                float y3 = brush_center.y + sinf(next_angle) * radius;
-                float x4 = brush_center.x + cosf(next_angle) * 15.0f;
-                float y4 = brush_center.y + sinf(next_angle) * 15.0f;
-                
-                // Black color for brush tool (selected)
-                ImU32 color = (currentTool == ToolType::BRUSH) ? 
-                             IM_COL32(40, 40, 40, 255) : IM_COL32(180, 180, 180, 255);
-                
-                draw_list->AddQuadFilled(
-                    ImVec2(x1, y1), ImVec2(x2, y2), 
-                    ImVec2(x3, y3), ImVec2(x4, y4), 
-                    color
-                );
-            }
+        if (i > 0) {
+            // Draw quad between this point and previous
+            draw_list->AddQuadFilled(
+                prev_inner, prev_outer,
+                ImVec2(x_outer, y_outer), ImVec2(x_inner, y_inner),
+                IM_COL32(40, 40, 40, 255)  // Black for brush
+            );
         }
         
-        // Brush icon in the segment
-        ImVec2 icon_pos = ImVec2(
-            brush_center.x + cosf(-M_PI/2.0f) * 32.0f - 6,
-            brush_center.y + sinf(-M_PI/2.0f) * 32.0f - 6
-        );
-        
-        // Simple brush icon (circle)
-        draw_list->AddCircleFilled(icon_pos, 6.0f, IM_COL32(255, 255, 255, 255), 16);
-        
-        // Reserve space for the wheel
-        ImGui::Dummy(ImVec2(180, 130));
-        
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        
-        // Brush width slider
-        ImGui::Text("Brush Width");
-        ImGui::PushItemWidth(160);
-        ImGui::SliderFloat("##brushwidth", &brushWidth, 0.5f, 20.0f, "%.1f px");
-        ImGui::PopItemWidth();
-        
-        // Visual preview of brush size
-        ImGui::Spacing();
-        ImVec2 preview_pos = ImGui::GetCursorScreenPos();
-        ImVec2 preview_center = ImVec2(preview_pos.x + 90, preview_pos.y + 15);
-        
-        draw_list->AddCircleFilled(preview_center, brushWidth / 2.0f, 
-                                   IM_COL32(0, 0, 0, 255), 32);
-        
-        ImGui::Dummy(ImVec2(180, 30));
+        prev_outer = ImVec2(x_outer, y_outer);
+        prev_inner = ImVec2(x_inner, y_inner);
     }
-    ImGui::End();
+    
+    // Brush icon (wavy line symbol)
+    float icon_angle = -M_PI / 2.0f;
+    ImVec2 icon_center = ImVec2(
+        center.x + cosf(icon_angle) * (outer_radius - 20.0f),
+        center.y + sinf(icon_angle) * (outer_radius - 20.0f)
+    );
+    
+    // Draw simple brush icon (wavy line)
+    draw_list->AddCircleFilled(icon_center, 3.0f, IM_COL32(255, 255, 255, 255), 16);
+    
+    // ===== Center: Brush width display =====
+    
+    // Format width as "5.2 pts"
+    char width_text[32];
+    snprintf(width_text, sizeof(width_text), "%.1f", brushWidth);
+    
+    // Calculate text size
+    ImVec2 text_size = ImGui::CalcTextSize(width_text);
+    ImVec2 text_pos = ImVec2(center.x - text_size.x * 0.5f, center.y - text_size.y * 0.5f);
+    
+    // Check if clicking on the number
+    bool clicking_number = false;
+    if (dist_to_center < center_circle_radius && ImGui::IsMouseClicked(0)) {
+        clicking_number = true;
+    }
+    
+    // Draw the number
+    draw_list->AddText(text_pos, IM_COL32(255, 255, 255, 255), width_text);
+    
+    // ===== Slider Popup (appears when clicking the number) =====
+    
+    static bool show_slider = false;
+    if (clicking_number) {
+        show_slider = !show_slider;
+    }
+    
+    if (show_slider) {
+        mouseOverUI = true;
+        
+        // Slider popup position (to the right of the wheel)
+        ImVec2 slider_pos = ImVec2(center.x + outer_radius + 20, center.y - 60);
+        
+        ImGui::SetNextWindowPos(slider_pos, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(280, 120), ImGuiCond_Always);
+        
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | 
+                                ImGuiWindowFlags_NoResize |
+                                ImGuiWindowFlags_NoMove |
+                                ImGuiWindowFlags_NoScrollbar;
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.95f, 0.95f, 0.95f, 0.98f));
+        
+        if (ImGui::Begin("##BrushSlider", &show_slider, flags)) {
+            ImGui::Spacing();
+            
+            // Title
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
+            ImGui::Text("TAMAÑO");
+            
+            ImGui::Spacing();
+            ImGui::Spacing();
+            
+            // Slider with preset marks
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
+            ImGui::PushItemWidth(260);
+            
+            if (ImGui::SliderFloat("##width", &brushWidth, 0.5f, 27.0f, "%.1f pts")) {
+                // Slider changed
+            }
+            
+            ImGui::PopItemWidth();
+            
+            // Preset buttons below
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
+            if (ImGui::Button("3 pts")) brushWidth = 3.0f;
+            ImGui::SameLine();
+            if (ImGui::Button("5.2 pts")) brushWidth = 5.2f;
+            ImGui::SameLine();
+            if (ImGui::Button("16 pts")) brushWidth = 16.0f;
+            ImGui::SameLine();
+            if (ImGui::Button("27 pts")) brushWidth = 27.0f;
+        }
+        ImGui::End();
+        
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+        
+        // Click outside to close
+        if (ImGui::IsMouseClicked(0)) {
+            ImVec2 click_pos = ImGui::GetMousePos();
+            float dist_to_slider = 
+                fabsf(click_pos.x - (slider_pos.x + 140)) + 
+                fabsf(click_pos.y - (slider_pos.y + 60));
+            
+            if (dist_to_slider > 200 && dist_to_center > center_circle_radius) {
+                show_slider = false;
+            }
+        }
+    }
+    
+    // Outline for the whole wheel
+    draw_list->AddCircle(center, outer_radius, IM_COL32(150, 150, 150, 255), 64, 2.0f);
 }
 
 } // namespace VectorSketch

@@ -121,7 +121,23 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_C) {
+        // Check for Ctrl modifier
+        bool ctrlPressed = (mods & GLFW_MOD_CONTROL) != 0;
+        bool shiftPressed = (mods & GLFW_MOD_SHIFT) != 0;
+        
+        if (ctrlPressed && shiftPressed && key == GLFW_KEY_Z) {
+            // Ctrl + Shift + Z: Redo
+            if (canvas.canRedo()) {
+                canvas.redo();
+                std::cout << "Redo" << std::endl;
+            }
+        } else if (ctrlPressed && key == GLFW_KEY_Z) {
+            // Ctrl + Z: Undo
+            if (canvas.canUndo()) {
+                canvas.undo();
+                std::cout << "Undo" << std::endl;
+            }
+        } else if (key == GLFW_KEY_C) {
             // Clear canvas
             canvas.clear();
             std::cout << "Canvas cleared" << std::endl;
@@ -199,6 +215,8 @@ int main() {
     std::cout << "  Left Mouse: Draw strokes" << std::endl;
     std::cout << "  Middle/Right Mouse: Pan canvas" << std::endl;
     std::cout << "  Scroll: Zoom in/out" << std::endl;
+    std::cout << "  Ctrl+Z: Undo (up to 7 actions)" << std::endl;
+    std::cout << "  Ctrl+Shift+Z: Redo" << std::endl;
     std::cout << "  C: Clear canvas" << std::endl;
     std::cout << "  R: Reset view" << std::endl;
     std::cout << "  ESC: Exit" << std::endl;
