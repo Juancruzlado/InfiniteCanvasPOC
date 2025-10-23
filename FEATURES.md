@@ -1,5 +1,47 @@
 # Funcionalidades Implementadas
 
+## ✅ Round Caps y Single Dots (NUEVO)
+
+### Descripción
+Extremos redondeados en las líneas y capacidad de dibujar puntos individuales, exactamente como en Concepts App.
+
+### Características
+- **Round Caps**: Semicírculos en inicio y final de cada trazo
+- **Single Dot**: Click sin mover el mouse dibuja un círculo perfecto
+- **Geometría real**: Todo renderizado como triangle strips/fans
+- **Apariencia profesional**: Idéntico a Concepts App
+
+### Implementación
+```cpp
+// Detectar single point (click sin movimiento)
+if (segments.size() == 1 && 
+    glm::length(segments[0].p1 - segments[0].p0) < 0.001f) {
+    // Dibujar círculo completo
+    for (angle en 0 a 2π) {
+        vertices.push_back(center);
+        vertices.push_back(center + radius * vec2(cos, sin));
+    }
+}
+
+// Round caps en trazos normales
+// Cap de inicio: semicírculo
+for (i en 0 a capSegments) {
+    vertices.push_back(startCenter);
+    vertices.push_back(startCenter + offset);
+}
+// Degenerate triangles para conectar
+// Body del trazo
+// Cap de final: semicírculo
+```
+
+### Por qué es Importante
+- ✅ **Dots perfectos**: Puntos limpios sin mover el mouse
+- ✅ **Líneas profesionales**: Extremos redondeados sin esquinas feas
+- ✅ **Estilo consistente**: Como Concepts, Procreate, etc.
+- ✅ **Geometría correcta**: No depende de `glLineWidth` buggy
+
+---
+
 ## ✅ Undo/Redo System (NUEVO)
 
 ### Descripción

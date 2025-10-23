@@ -145,10 +145,19 @@ void VectorRenderer::renderStroke(const Stroke& stroke) {
     auto segments = BezierSmoother::smooth(stroke);
     if (segments.empty()) return;
     
+    std::cout << "Rendering stroke: " << stroke.getPointCount() << " points, " 
+              << segments.size() << " segments" << std::endl;
+    
     // Generate triangle strip vertices with proper width
     // The width is baked into the geometry, so it will scale with zoom automatically
     auto vertices = BezierSmoother::generateTriangleStrip(segments, stroke.getBaseWidth(), 15);
-    if (vertices.size() < 4) return;  // Need at least 2 quads (4 vertices)
+    
+    std::cout << "Generated " << vertices.size() << " vertices" << std::endl;
+    
+    if (vertices.size() < 4) {
+        std::cout << "Too few vertices, skipping" << std::endl;
+        return;
+    }
     
     // Upload to GPU
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
