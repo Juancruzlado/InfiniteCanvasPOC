@@ -1,0 +1,29 @@
+# VectorSketch - Infinite Canvas POC
+
+This directory contains a complete C++ proof-of-concept for an infinite canvas vector sketching application, similar to the Concepts app.
+
+## 📁 Project Files
+
+- **QUICKSTART.md** - Start here! Installation and basic usage
+- **README.md** - Full documentation and technical details
+- **ARCHITECTURE.md** - Deep dive into system design and implementation
+- **CMakeLists.txt** - Build configuration
+- **build.sh** - Convenient build script
+- **include/** - Header files
+- **src/** - Implementation files
+
+## 🚀 Get Started
+
+1. Install dependencies (see QUICKSTART.md)
+2. Build: `./build.sh`
+3. Run: `./build/VectorSketch`
+
+## ✨ Features
+
+- Stroke sampling with pressure/tilt data
+- Bézier curve smoothing (Catmull-Rom)
+- GPU-accelerated rendering (OpenGL)
+- Infinite canvas with pan/zoom
+- Real-time performance
+
+Happy sketching! 🎨
