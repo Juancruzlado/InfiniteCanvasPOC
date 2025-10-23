@@ -1,5 +1,25 @@
 # Funcionalidades Implementadas
 
+## ✅ Tool Wheel UI (NUEVO - Estilo Concepts App)
+
+### Descripción
+UI wheel circular en la esquina superior izquierda, inspirada en Concepts App, que permite seleccionar herramientas y ajustar parámetros en tiempo real.
+
+### Características
+- **Rueda circular visual** con segmentos para cada herramienta
+- **Brush Tool** (pincel) en segmento negro superior
+- **Slider de grosor** ajustable de 0.5px a 20px
+- **Preview visual** del grosor actual
+- **Prevención de dibujo** sobre la UI (no interfiere con el canvas)
+- **Diseño limpio** con Dear ImGui
+
+### Controles
+- El grosor se ajusta con el slider en tiempo real
+- Los nuevos trazos usan el grosor seleccionado
+- La UI siempre visible pero no intrusiva
+
+---
+
 ## ✅ Grosor de Línea Proporcional al Zoom
 
 ### Descripción

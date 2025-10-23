@@ -1,15 +1,20 @@
 #include "Canvas.h"
 #include "VectorRenderer.h"
 #include "StrokePoint.h"
+#include "ToolWheel.h"
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <chrono>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 using namespace VectorSketch;
 
 // Global state
 Canvas canvas;
 VectorRenderer renderer;
+ToolWheel toolWheel;
 bool isDrawing = false;
 glm::vec2 lastMousePos(0.0f);         // Screen space
 glm::vec2 lastWorldPos(0.0f);        // World space
@@ -40,22 +45,14 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     glm::vec2 mousePos(static_cast<float>(xpos), static_cast<float>(ypos));
     
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
-        if (action == GLFW_PRESS && !isPanning) {
+        if (action == GLFW_PRESS && !isPanning && !toolWheel.isMouseOverUI()) {
             isDrawing = true;
             
-            // Start new stroke with random color for visual variety
-            float hue = fmod(getCurrentTime() * 50.0f, 360.0f);
-            glm::vec3 color(0.0f, 0.0f, 0.0f); // Default black
+            // Start new stroke with current tool settings
+            glm::vec3 color(0.0f, 0.0f, 0.0f); // Black
+            float brushWidth = toolWheel.getBrushWidth();
             
-            // Uncomment for colorful strokes:
-            // int colorIndex = static_cast<int>(getCurrentTime() * 2) % 5;
-            // if (colorIndex == 0) color = glm::vec3(0.2f, 0.4f, 0.8f); // Blue
-            // else if (colorIndex == 1) color = glm::vec3(0.8f, 0.2f, 0.4f); // Red
-            // else if (colorIndex == 2) color = glm::vec3(0.2f, 0.7f, 0.3f); // Green
-            // else if (colorIndex == 3) color = glm::vec3(0.7f, 0.5f, 0.2f); // Orange
-            // else color = glm::vec3(0.5f, 0.2f, 0.7f); // Purple
-            
-            canvas.beginStroke(color, 3.0f);
+            canvas.beginStroke(color, brushWidth);
             
             // Convert screen to world coordinates
             glm::vec2 worldPos = renderer.screenToWorld(mousePos);
@@ -184,6 +181,19 @@ int main() {
         return -1;
     }
     
+    // Initialize ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    
+    // Setup ImGui style
+    ImGui::StyleColorsDark();
+    
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+    
     std::cout << "=== Vector Sketch POC ===" << std::endl;
     std::cout << "Controls:" << std::endl;
     std::cout << "  Left Mouse: Draw strokes" << std::endl;
@@ -202,17 +212,40 @@ int main() {
     
     // Main loop
     while (!glfwWindowShouldClose(window)) {
-        // Render
+        // Poll events
+        glfwPollEvents();
+        
+        // Start ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        
+        // Get window size for UI
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        
+        // Render canvas
         renderer.beginFrame();
         canvas.render(renderer);
         renderer.endFrame();
         
-        // Swap buffers and poll events
+        // Render UI on top
+        toolWheel.render(display_w, display_h);
+        
+        // Render ImGui
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        
+        // Swap buffers
         glfwSwapBuffers(window);
-        glfwPollEvents();
     }
     
-    // Cleanup
+    // Cleanup ImGui
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+    
+    // Cleanup GLFW
     glfwTerminate();
     return 0;
 }

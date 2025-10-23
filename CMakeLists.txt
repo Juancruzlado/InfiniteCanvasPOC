@@ -11,11 +11,32 @@ find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 
+# Download ImGui if not present
+include(FetchContent)
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.90.1
+)
+FetchContent_MakeAvailable(imgui)
+
 # Include directories
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${OPENGL_INCLUDE_DIRS}
     ${GLEW_INCLUDE_DIRS}
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+)
+
+# ImGui sources
+set(IMGUI_SOURCES
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
 # Source files
@@ -25,6 +46,8 @@ set(SOURCES
     src/BezierSmoother.cpp
     src/VectorRenderer.cpp
     src/Canvas.cpp
+    src/ToolWheel.cpp
+    ${IMGUI_SOURCES}
 )
 
 # Header files (for IDE organization)
@@ -34,6 +57,7 @@ set(HEADERS
     include/BezierSmoother.h
     include/VectorRenderer.h
     include/Canvas.h
+    include/ToolWheel.h
 )
 
 # Create executable
