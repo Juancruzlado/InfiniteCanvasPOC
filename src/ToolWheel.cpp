@@ -8,6 +8,7 @@ namespace VectorSketch {
 ToolWheel::ToolWheel() 
     : currentTool(ToolType::BRUSH),
       brushWidth(5.2f),
+      currentColor(0.0f, 0.0f, 0.0f),  // Black by default
       mouseOverUI(false),
       wheelVisible(true) {
 }
@@ -19,9 +20,11 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
     
     // Wheel position (top-left corner)
     ImVec2 center = ImVec2(100, 100);
-    float outer_radius = 70.0f;
-    float inner_radius = 30.0f;
-    float center_circle_radius = 25.0f;
+    
+    // Three concentric circles
+    float outer_radius = 70.0f;      // Tool selector ring
+    float middle_radius = 45.0f;     // Width display ring
+    float inner_radius = 25.0f;      // Color selector circle
     
     // Check if mouse is over the wheel
     ImVec2 mouse_pos = ImGui::GetMousePos();
@@ -32,19 +35,22 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
     bool mouse_over_wheel = dist_to_center < outer_radius;
     mouseOverUI = mouse_over_wheel;
     
-    // ===== Draw the wheel =====
+    // ===== Draw the three circles =====
     
-    // Outer ring (light gray background)
+    // Outer ring (light gray) - Tool selector background
     draw_list->AddCircleFilled(center, outer_radius, IM_COL32(220, 220, 220, 255), 64);
     
-    // Inner circle (darker gray)
-    draw_list->AddCircleFilled(center, center_circle_radius, IM_COL32(180, 180, 180, 255), 64);
+    // Middle ring (white) - Width display
+    draw_list->AddCircleFilled(center, middle_radius, IM_COL32(255, 255, 255, 255), 64);
     
-    // ===== Brush Tool Segment (top, black) =====
+    // Inner circle (black) - Color selector
+    draw_list->AddCircleFilled(center, inner_radius, IM_COL32(0, 0, 0, 255), 64);
+    
+    // ===== Brush Tool Segment (outer ring, top) =====
     float brush_angle_start = -M_PI / 2.0f - M_PI / 8.0f;
     float brush_angle_end = -M_PI / 2.0f + M_PI / 8.0f;
     
-    // Draw brush segment as filled arc
+    // Draw brush segment as filled arc (from middle_radius to outer_radius)
     const int segments = 32;
     ImVec2 prev_outer, prev_inner;
     
@@ -54,8 +60,8 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
         
         float x_outer = center.x + cosf(angle) * outer_radius;
         float y_outer = center.y + sinf(angle) * outer_radius;
-        float x_inner = center.x + cosf(angle) * inner_radius;
-        float y_inner = center.y + sinf(angle) * inner_radius;
+        float x_inner = center.x + cosf(angle) * middle_radius;  // Changed from inner_radius
+        float y_inner = center.y + sinf(angle) * middle_radius;
         
         if (i > 0) {
             // Draw quad between this point and previous
@@ -70,40 +76,50 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
         prev_inner = ImVec2(x_inner, y_inner);
     }
     
-    // Brush icon (wavy line symbol)
+    // Brush icon (wavy line symbol) in outer ring
     float icon_angle = -M_PI / 2.0f;
+    float icon_radius = (outer_radius + middle_radius) / 2.0f;  // Middle of the outer ring
     ImVec2 icon_center = ImVec2(
-        center.x + cosf(icon_angle) * (outer_radius - 20.0f),
-        center.y + sinf(icon_angle) * (outer_radius - 20.0f)
+        center.x + cosf(icon_angle) * icon_radius,
+        center.y + sinf(icon_angle) * icon_radius
     );
     
     // Draw simple brush icon (wavy line)
     draw_list->AddCircleFilled(icon_center, 3.0f, IM_COL32(255, 255, 255, 255), 16);
     
-    // ===== Center: Brush width display =====
+    // ===== Middle ring: Brush width display =====
     
     // Format width as "5.2 pts"
     char width_text[32];
-    snprintf(width_text, sizeof(width_text), "%.1f", brushWidth);
+    snprintf(width_text, sizeof(width_text), "%.1f pts", brushWidth);
     
     // Calculate text size
     ImVec2 text_size = ImGui::CalcTextSize(width_text);
     ImVec2 text_pos = ImVec2(center.x - text_size.x * 0.5f, center.y - text_size.y * 0.5f);
     
-    // Check if clicking on the number
-    bool clicking_number = false;
-    if (dist_to_center < center_circle_radius && ImGui::IsMouseClicked(0)) {
-        clicking_number = true;
+    // Check if clicking on the middle ring to open slider
+    bool clicking_width_ring = false;
+    if (dist_to_center > inner_radius && dist_to_center < middle_radius && ImGui::IsMouseClicked(0)) {
+        clicking_width_ring = true;
     }
     
-    // Draw the number
-    draw_list->AddText(text_pos, IM_COL32(255, 255, 255, 255), width_text);
+    // Check if clicking on the inner circle to open color picker
+    bool clicking_color_circle = false;
+    if (dist_to_center <= inner_radius && ImGui::IsMouseClicked(0)) {
+        clicking_color_circle = true;
+    }
     
-    // ===== Slider Popup (appears when clicking the number) =====
+    // Draw the width text in middle ring (black text on white background)
+    draw_list->AddText(text_pos, IM_COL32(0, 0, 0, 255), width_text);
+    
+    // ===== Slider Popup (appears when clicking the middle ring) =====
     
     static bool show_slider = false;
-    if (clicking_number) {
+    static bool slider_was_just_opened = false;
+    
+    if (clicking_width_ring) {
         show_slider = !show_slider;
+        slider_was_just_opened = true;
     }
     
     if (show_slider) {
@@ -137,7 +153,7 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
             ImGui::PushItemWidth(260);
             
-            if (ImGui::SliderFloat("##width", &brushWidth, 0.5f, 27.0f, "%.1f pts")) {
+            if (ImGui::SliderFloat("##width", &brushWidth, 0.1f, 40.0f, "%.1f pts")) {
                 // Slider changed
             }
             
@@ -145,30 +161,152 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
             
             // Preset buttons below
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
-            if (ImGui::Button("3 pts")) brushWidth = 3.0f;
+            if (ImGui::Button("5 pts")) brushWidth = 5.0f;
             ImGui::SameLine();
-            if (ImGui::Button("5.2 pts")) brushWidth = 5.2f;
+            if (ImGui::Button("10 pts")) brushWidth = 10.0f;
             ImGui::SameLine();
-            if (ImGui::Button("16 pts")) brushWidth = 16.0f;
+            if (ImGui::Button("20 pts")) brushWidth = 20.0f;
             ImGui::SameLine();
-            if (ImGui::Button("27 pts")) brushWidth = 27.0f;
+            if (ImGui::Button("40 pts")) brushWidth = 40.0f;
         }
         ImGui::End();
         
         ImGui::PopStyleColor();
         ImGui::PopStyleVar();
         
-        // Click outside to close
-        if (ImGui::IsMouseClicked(0)) {
+        // Click outside to close (but not on the frame it was just opened)
+        if (ImGui::IsMouseClicked(0) && !slider_was_just_opened) {
+            // Check if click is outside both the slider and the wheel
             ImVec2 click_pos = ImGui::GetMousePos();
-            float dist_to_slider = 
-                fabsf(click_pos.x - (slider_pos.x + 140)) + 
-                fabsf(click_pos.y - (slider_pos.y + 60));
             
-            if (dist_to_slider > 200 && dist_to_center > center_circle_radius) {
+            // Check if click is outside slider window
+            bool outside_slider = (click_pos.x < slider_pos.x || 
+                                   click_pos.x > slider_pos.x + 280 ||
+                                   click_pos.y < slider_pos.y || 
+                                   click_pos.y > slider_pos.y + 120);
+            
+            // Check if click is outside wheel
+            bool outside_wheel = dist_to_center > outer_radius;
+            
+            if (outside_slider && outside_wheel) {
                 show_slider = false;
             }
         }
+        
+        // Reset the flag after this frame
+        slider_was_just_opened = false;
+    }
+    
+    // ===== Color Picker Popup (appears when clicking the inner circle) =====
+    
+    static bool show_color_picker = false;
+    static bool color_picker_was_just_opened = false;
+    
+    // Use member variable currentColor, convert to array for ImGui
+    float temp_color[3] = {currentColor.r, currentColor.g, currentColor.b};
+    
+    if (clicking_color_circle) {
+        show_color_picker = !show_color_picker;
+        color_picker_was_just_opened = true;
+    }
+    
+    if (show_color_picker) {
+        mouseOverUI = true;
+        
+        // Color picker popup position (to the right of the wheel)
+        ImVec2 picker_pos = ImVec2(center.x + outer_radius + 20, center.y - 100);
+        
+        ImGui::SetNextWindowPos(picker_pos, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(300, 320), ImGuiCond_Always);
+        
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | 
+                                ImGuiWindowFlags_NoResize |
+                                ImGuiWindowFlags_NoMove |
+                                ImGuiWindowFlags_NoScrollbar;
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.95f, 0.95f, 0.95f, 0.98f));
+        
+        if (ImGui::Begin("##ColorPicker", &show_color_picker, flags)) {
+            ImGui::Spacing();
+            
+            // Title
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
+            ImGui::Text("COLOR");
+            
+            ImGui::Spacing();
+            ImGui::Spacing();
+            
+            // Color picker wheel
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
+            if (ImGui::ColorPicker3("##picker", temp_color, 
+                               ImGuiColorEditFlags_PickerHueWheel | 
+                               ImGuiColorEditFlags_NoSidePreview |
+                               ImGuiColorEditFlags_NoInputs |
+                               ImGuiColorEditFlags_NoAlpha)) {
+                // Update currentColor when picker changes
+                currentColor = glm::vec3(temp_color[0], temp_color[1], temp_color[2]);
+            }
+            
+            ImGui::Spacing();
+            
+            // Common color presets
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
+            ImGui::Text("Presets:");
+            
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
+            if (ImGui::ColorButton("Black", ImVec4(0.0f, 0.0f, 0.0f, 1.0f), 0, ImVec2(30, 30))) {
+                currentColor = glm::vec3(0.0f, 0.0f, 0.0f);
+            }
+            ImGui::SameLine();
+            if (ImGui::ColorButton("Red", ImVec4(1.0f, 0.0f, 0.0f, 1.0f), 0, ImVec2(30, 30))) {
+                currentColor = glm::vec3(1.0f, 0.0f, 0.0f);
+            }
+            ImGui::SameLine();
+            if (ImGui::ColorButton("Blue", ImVec4(0.0f, 0.0f, 1.0f, 1.0f), 0, ImVec2(30, 30))) {
+                currentColor = glm::vec3(0.0f, 0.0f, 1.0f);
+            }
+            ImGui::SameLine();
+            if (ImGui::ColorButton("Green", ImVec4(0.0f, 1.0f, 0.0f, 1.0f), 0, ImVec2(30, 30))) {
+                currentColor = glm::vec3(0.0f, 1.0f, 0.0f);
+            }
+            ImGui::SameLine();
+            if (ImGui::ColorButton("Yellow", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), 0, ImVec2(30, 30))) {
+                currentColor = glm::vec3(1.0f, 1.0f, 0.0f);
+            }
+            ImGui::SameLine();
+            if (ImGui::ColorButton("Magenta", ImVec4(1.0f, 0.0f, 1.0f, 1.0f), 0, ImVec2(30, 30))) {
+                currentColor = glm::vec3(1.0f, 0.0f, 1.0f);
+            }
+        }
+        ImGui::End();
+        
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+        
+        // Update the center circle color to show current selection
+        draw_list->AddCircleFilled(center, inner_radius, 
+                                   IM_COL32((int)(currentColor.r * 255), 
+                                           (int)(currentColor.g * 255), 
+                                           (int)(currentColor.b * 255), 255), 64);
+        
+        // Click outside to close
+        if (ImGui::IsMouseClicked(0) && !color_picker_was_just_opened) {
+            ImVec2 click_pos = ImGui::GetMousePos();
+            
+            bool outside_picker = (click_pos.x < picker_pos.x || 
+                                  click_pos.x > picker_pos.x + 300 ||
+                                  click_pos.y < picker_pos.y || 
+                                  click_pos.y > picker_pos.y + 320);
+            
+            bool outside_wheel = dist_to_center > outer_radius;
+            
+            if (outside_picker && outside_wheel) {
+                show_color_picker = false;
+            }
+        }
+        
+        color_picker_was_just_opened = false;
     }
     
     // Outline for the whole wheel

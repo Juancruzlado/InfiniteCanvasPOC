@@ -49,7 +49,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
             isDrawing = true;
             
             // Start new stroke with current tool settings
-            glm::vec3 color(0.0f, 0.0f, 0.0f); // Black
+            glm::vec3 color = toolWheel.getCurrentColor();
             float brushWidth = toolWheel.getBrushWidth();
             
             canvas.beginStroke(color, brushWidth);

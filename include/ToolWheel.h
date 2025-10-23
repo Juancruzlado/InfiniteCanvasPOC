@@ -27,12 +27,16 @@ public:
     // Get current brush width
     float getBrushWidth() const { return brushWidth; }
     
+    // Get current color (RGB)
+    glm::vec3 getCurrentColor() const { return currentColor; }
+    
     // Check if mouse is over UI (to prevent drawing)
     bool isMouseOverUI() const { return mouseOverUI; }
     
 private:
     ToolType currentTool;
     float brushWidth;
+    glm::vec3 currentColor;
     bool mouseOverUI;
     bool wheelVisible;
 };
