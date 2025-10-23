@@ -1,5 +1,11 @@
 # Bug Fixes - Coordinate Transformation Issues
 
+## ✅ Estado: TODOS LOS BUGS CORREGIDOS
+
+**Commit**: "Estado: funciona linea zoom y drag perfecto"
+
+---
+
 ## Issues Fixed
 
 ### Bug #1: Erratic Panning When Zoomed
@@ -217,6 +223,32 @@ The fixes ensure:
 - No impact on rendering performance
 - No impact on stroke storage
 
+## New Feature: Proportional Line Width on Zoom
+
+### Issue #4: Line Thickness Consistency (IMPLEMENTED ✅)
+**Request**: Lines should maintain their visual thickness when zooming, like in Concepts App.
+
+**Implementation**: Scale line width proportionally with zoom level:
+```cpp
+// In VectorRenderer::renderStroke()
+float currentScale = glm::length(glm::vec3(viewTransform[0]));
+float scaledWidth = stroke.getBaseWidth() * currentScale;
+glLineWidth(scaledWidth);
+```
+
+**Result**: 
+- Zoom in 2x → line width doubles (maintains visual appearance)
+- Zoom out 0.5x → line width halves (maintains visual appearance)
+- Consistent with professional vector drawing apps
+
+**Benefits**:
+- ✅ Lines never appear too thin when zoomed in
+- ✅ Lines never appear too thick when zoomed out
+- ✅ Professional drawing experience
+- ✅ Same behavior as Concepts App
+
+---
+
 ## Future Enhancements
 
 Consider adding:
@@ -224,3 +256,5 @@ Consider adding:
 - Viewport culling using world-space bounds
 - Mini-map showing world coordinates
 - Debug overlay showing coordinate spaces
+- Variable line width along stroke (based on pressure)
+- Brush texture support

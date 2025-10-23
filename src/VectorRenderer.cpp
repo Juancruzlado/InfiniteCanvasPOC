@@ -145,14 +145,15 @@ void VectorRenderer::renderStroke(const Stroke& stroke) {
     auto segments = BezierSmoother::smooth(stroke);
     if (segments.empty()) return;
     
-    // Tesselate into line segments
-    auto points = BezierSmoother::tesselate(segments, 15);
-    if (points.size() < 2) return;
+    // Generate triangle strip vertices with proper width
+    // The width is baked into the geometry, so it will scale with zoom automatically
+    auto vertices = BezierSmoother::generateTriangleStrip(segments, stroke.getBaseWidth(), 15);
+    if (vertices.size() < 4) return;  // Need at least 2 quads (4 vertices)
     
     // Upload to GPU
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(glm::vec2), 
-                 points.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec2), 
+                 vertices.data(), GL_DYNAMIC_DRAW);
     
     // Set uniforms
     glm::mat4 mvp = projectionMatrix * viewTransform;
@@ -161,12 +162,12 @@ void VectorRenderer::renderStroke(const Stroke& stroke) {
     glm::vec3 color = stroke.getColor();
     glUniform3f(uColor, color.r, color.g, color.b);
     
-    // Set line width based on stroke width
-    glLineWidth(stroke.getBaseWidth());
+    // No need for glLineWidth - width is in the geometry!
+    // When you zoom, the entire triangle strip scales, maintaining visual thickness
     
-    // Draw
+    // Draw as triangle strip
     glBindVertexArray(vao);
-    glDrawArrays(GL_LINE_STRIP, 0, points.size());
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, vertices.size());
     glBindVertexArray(0);
 }
 

@@ -28,6 +28,12 @@ public:
     // Tesselate Bézier segments into line segments for rendering
     static std::vector<glm::vec2> tesselate(const std::vector<BezierSegment>& segments, 
                                             int pointsPerSegment = 20);
+    
+    // Generate triangle strip vertices for stroke with variable width
+    // Returns interleaved vertices: [left1, right1, left2, right2, ...]
+    static std::vector<glm::vec2> generateTriangleStrip(const std::vector<BezierSegment>& segments,
+                                                         float baseWidth,
+                                                         int pointsPerSegment = 20);
 };
 
 } // namespace VectorSketch
