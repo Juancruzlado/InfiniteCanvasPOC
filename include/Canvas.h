@@ -4,6 +4,7 @@
 #include "VectorRenderer.h"
 #include <vector>
 #include <memory>
+#include <string>
 
 namespace VectorSketch {
 
@@ -37,6 +38,10 @@ public:
     size_t getStrokeCount() const { return strokes.size(); }
     
     bool isDrawing() const { return currentStroke != nullptr; }
+    
+    // File operations
+    bool saveToFile(const std::string& filepath);
+    bool loadFromFile(const std::string& filepath);
     
 private:
     void saveToHistory();

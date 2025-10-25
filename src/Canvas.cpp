@@ -1,5 +1,7 @@
 #include "Canvas.h"
 #include <iostream>
+#include <fstream>
+#include <cstring>
 
 namespace VectorSketch {
 
@@ -137,6 +139,153 @@ void Canvas::render(VectorRenderer& renderer) {
     // Render current stroke being drawn
     if (currentStroke && !currentStroke->isEmpty()) {
         renderer.renderStroke(*currentStroke);
+    }
+}
+
+bool Canvas::saveToFile(const std::string& filepath) {
+    std::ofstream file(filepath, std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for writing: " << filepath << std::endl;
+        return false;
+    }
+    
+    try {
+        // Write header: magic number + version
+        const char magic[4] = {'M', 'M', 'V', 'S'}; // Mind Map Vector Sketch
+        file.write(magic, 4);
+        
+        uint32_t version = 1;
+        file.write(reinterpret_cast<const char*>(&version), sizeof(version));
+        
+        // Write number of strokes
+        uint32_t numStrokes = static_cast<uint32_t>(strokes.size());
+        file.write(reinterpret_cast<const char*>(&numStrokes), sizeof(numStrokes));
+        
+        // Write each stroke
+        for (const auto& stroke : strokes) {
+            // Write color (3 floats)
+            glm::vec3 color = stroke->getColor();
+            file.write(reinterpret_cast<const char*>(&color.r), sizeof(float));
+            file.write(reinterpret_cast<const char*>(&color.g), sizeof(float));
+            file.write(reinterpret_cast<const char*>(&color.b), sizeof(float));
+            
+            // Write base width
+            float width = stroke->getBaseWidth();
+            file.write(reinterpret_cast<const char*>(&width), sizeof(float));
+            
+            // Write number of points
+            uint32_t numPoints = static_cast<uint32_t>(stroke->getPointCount());
+            file.write(reinterpret_cast<const char*>(&numPoints), sizeof(numPoints));
+            
+            // Write each point
+            const auto& points = stroke->getPoints();
+            for (const auto& point : points) {
+                file.write(reinterpret_cast<const char*>(&point.position.x), sizeof(float));
+                file.write(reinterpret_cast<const char*>(&point.position.y), sizeof(float));
+                file.write(reinterpret_cast<const char*>(&point.pressure), sizeof(float));
+                file.write(reinterpret_cast<const char*>(&point.tiltX), sizeof(float));
+                file.write(reinterpret_cast<const char*>(&point.tiltY), sizeof(float));
+                file.write(reinterpret_cast<const char*>(&point.timestamp), sizeof(float));
+            }
+        }
+        
+        file.close();
+        std::cout << "Saved " << numStrokes << " strokes to " << filepath << std::endl;
+        return true;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error saving file: " << e.what() << std::endl;
+        file.close();
+        return false;
+    }
+}
+
+bool Canvas::loadFromFile(const std::string& filepath) {
+    std::ifstream file(filepath, std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file for reading: " << filepath << std::endl;
+        return false;
+    }
+    
+    try {
+        // Read and verify header
+        char magic[4];
+        file.read(magic, 4);
+        if (magic[0] != 'M' || magic[1] != 'M' || magic[2] != 'V' || magic[3] != 'S') {
+            std::cerr << "Invalid file format (bad magic number)" << std::endl;
+            file.close();
+            return false;
+        }
+        
+        uint32_t version;
+        file.read(reinterpret_cast<char*>(&version), sizeof(version));
+        if (version != 1) {
+            std::cerr << "Unsupported file version: " << version << std::endl;
+            file.close();
+            return false;
+        }
+        
+        // Read number of strokes
+        uint32_t numStrokes;
+        file.read(reinterpret_cast<char*>(&numStrokes), sizeof(numStrokes));
+        
+        // Clear current strokes
+        strokes.clear();
+        
+        // Read each stroke
+        for (uint32_t i = 0; i < numStrokes; ++i) {
+            auto stroke = std::make_shared<Stroke>();
+            
+            // Read color
+            glm::vec3 color;
+            file.read(reinterpret_cast<char*>(&color.r), sizeof(float));
+            file.read(reinterpret_cast<char*>(&color.g), sizeof(float));
+            file.read(reinterpret_cast<char*>(&color.b), sizeof(float));
+            stroke->setColor(color);
+            
+            // Read base width
+            float width;
+            file.read(reinterpret_cast<char*>(&width), sizeof(float));
+            stroke->setBaseWidth(width);
+            
+            // Read number of points
+            uint32_t numPoints;
+            file.read(reinterpret_cast<char*>(&numPoints), sizeof(numPoints));
+            
+            // Read each point
+            for (uint32_t j = 0; j < numPoints; ++j) {
+                StrokePoint point;
+                file.read(reinterpret_cast<char*>(&point.position.x), sizeof(float));
+                file.read(reinterpret_cast<char*>(&point.position.y), sizeof(float));
+                file.read(reinterpret_cast<char*>(&point.pressure), sizeof(float));
+                file.read(reinterpret_cast<char*>(&point.tiltX), sizeof(float));
+                file.read(reinterpret_cast<char*>(&point.tiltY), sizeof(float));
+                file.read(reinterpret_cast<char*>(&point.timestamp), sizeof(float));
+                stroke->addPoint(point);
+            }
+            
+            strokes.push_back(stroke);
+        }
+        
+        file.close();
+        
+        // Initialize history after loading
+        history.clear();
+        std::vector<std::shared_ptr<Stroke>> initial;
+        for (const auto& stroke : strokes) {
+            auto strokeCopy = std::make_shared<Stroke>(*stroke);
+            initial.push_back(strokeCopy);
+        }
+        history.push_back(initial);
+        historyIndex = 0;
+        
+        std::cout << "Loaded " << numStrokes << " strokes from " << filepath << std::endl;
+        return true;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error loading file: " << e.what() << std::endl;
+        file.close();
+        return false;
     }
 }
 

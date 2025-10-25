@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <chrono>
+#include <cstdio>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -21,12 +22,107 @@ glm::vec2 lastWorldPos(0.0f);        // World space
 glm::vec2 panStart(0.0f);
 bool isPanning = false;
 
+// File dialog state
+bool showSaveDialog = false;
+bool showOpenDialog = false;
+
 auto startTime = std::chrono::high_resolution_clock::now();
 
 float getCurrentTime() {
     auto now = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime);
     return duration.count() / 1000.0f;
+}
+
+// Open native file dialog using zenity (Ubuntu/GNOME)
+std::string openNativeFileDialog(bool isSave) {
+    std::string command;
+    
+    if (isSave) {
+        // Save dialog with .mm filter
+        command = "zenity --file-selection --save --confirm-overwrite "
+                  "--title=\"Guardar Dibujo\" "
+                  "--filename=\"drawing.mm\" "
+                  "--file-filter=\"Mind Map Files (*.mm) | *.mm\" "
+                  "--file-filter=\"All Files | *\" "
+                  "2>/dev/null";
+    } else {
+        // Open dialog with .mm filter
+        command = "zenity --file-selection "
+                  "--title=\"Abrir Dibujo\" "
+                  "--file-filter=\"Mind Map Files (*.mm) | *.mm\" "
+                  "--file-filter=\"All Files | *\" "
+                  "2>/dev/null";
+    }
+    
+    // Execute command and capture output
+    FILE* pipe = popen(command.c_str(), "r");
+    if (!pipe) {
+        std::cerr << "Error: No se pudo abrir zenity. Asegúrate de que está instalado." << std::endl;
+        return "";
+    }
+    
+    char buffer[512];
+    std::string result = "";
+    
+    if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        result = buffer;
+        // Remove trailing newline
+        if (!result.empty() && result[result.length() - 1] == '\n') {
+            result.erase(result.length() - 1);
+        }
+    }
+    
+    pclose(pipe);
+    return result;
+}
+
+// Process file dialog requests
+void processFileDialogs() {
+    static bool processingDialog = false;
+    
+    if (showSaveDialog && !processingDialog) {
+        processingDialog = true;
+        showSaveDialog = false;
+        
+        std::string filepath = openNativeFileDialog(true);
+        
+        if (!filepath.empty()) {
+            // Add .mm extension if not present
+            if (filepath.length() < 3 || filepath.substr(filepath.length() - 3) != ".mm") {
+                filepath += ".mm";
+            }
+            
+            if (canvas.saveToFile(filepath)) {
+                std::cout << "✓ Archivo guardado: " << filepath << std::endl;
+            } else {
+                std::cerr << "✗ Error al guardar el archivo" << std::endl;
+            }
+        } else {
+            std::cout << "Guardado cancelado" << std::endl;
+        }
+        
+        processingDialog = false;
+    }
+    
+    if (showOpenDialog && !processingDialog) {
+        processingDialog = true;
+        showOpenDialog = false;
+        
+        std::string filepath = openNativeFileDialog(false);
+        
+        if (!filepath.empty()) {
+            if (canvas.loadFromFile(filepath)) {
+                std::cout << "✓ Archivo cargado: " << filepath << std::endl;
+            } else {
+                std::cerr << "✗ Error al cargar el archivo" << std::endl;
+            }
+        } else {
+            std::cout << "Carga cancelada" << std::endl;
+        }
+        
+        processingDialog = false;
+    }
 }
 
 // Simulate pressure based on mouse speed (for demo purposes)
@@ -126,7 +222,15 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         bool ctrlPressed = (mods & GLFW_MOD_CONTROL) != 0;
         bool shiftPressed = (mods & GLFW_MOD_SHIFT) != 0;
         
-        if (ctrlPressed && shiftPressed && key == GLFW_KEY_Z) {
+        if (ctrlPressed && key == GLFW_KEY_S) {
+            // Ctrl + S: Save
+            showSaveDialog = true;
+            std::cout << "Open save dialog" << std::endl;
+        } else if (ctrlPressed && key == GLFW_KEY_O) {
+            // Ctrl + O: Open
+            showOpenDialog = true;
+            std::cout << "Open load dialog" << std::endl;
+        } else if (ctrlPressed && shiftPressed && key == GLFW_KEY_Z) {
             // Ctrl + Shift + Z: Redo
             if (canvas.canRedo()) {
                 canvas.redo();
@@ -216,6 +320,8 @@ int main() {
     std::cout << "  Left Mouse: Draw strokes" << std::endl;
     std::cout << "  Middle/Right Mouse: Pan canvas" << std::endl;
     std::cout << "  Scroll: Zoom in/out" << std::endl;
+    std::cout << "  Ctrl+S: Save to .mm file" << std::endl;
+    std::cout << "  Ctrl+O: Open .mm file" << std::endl;
     std::cout << "  Ctrl+Z: Undo (up to 7 actions)" << std::endl;
     std::cout << "  Ctrl+Shift+Z: Redo" << std::endl;
     std::cout << "  C: Clear canvas" << std::endl;
@@ -250,6 +356,9 @@ int main() {
         
         // Render UI on top
         toolWheel.render(display_w, display_h);
+        
+        // Process file dialog requests (native system dialogs)
+        processFileDialogs();
         
         // Render ImGui
         ImGui::Render();

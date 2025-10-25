@@ -9,6 +9,10 @@ A C++ proof-of-concept application that simulates the infinite canvas vector ske
 - 🚀 **GPU Acceleration**: OpenGL-based vector rendering for crisp, smooth lines
 - ♾️ **Infinite Canvas**: Pan and zoom with unlimited drawing space
 - 🖱️ **Pressure Simulation**: Mouse speed simulates pen pressure (works with stylus input too)
+- 🎨 **Tool Wheel UI**: Interactive circular UI for tool selection, brush width (0.01-200 pts), and color picking
+- 🖌️ **Brush & Eraser**: Switch between drawing and erasing with the same width controls
+- ↩️ **Undo/Redo**: History system supporting up to 7 actions
+- 💾 **Save/Load**: Persistent storage in binary .mm (Mind Map) file format with full file browser
 
 ## Architecture
 
@@ -116,28 +120,59 @@ make -j$(nproc)
 
 ## Controls
 
+### Canvas Navigation
 | Action | Control |
 |--------|---------|
-| **Draw** | Left Mouse Button (hold and drag) |
+| **Draw/Erase** | Left Mouse Button (hold and drag) |
 | **Pan Canvas** | Middle or Right Mouse Button (drag) |
 | **Zoom** | Mouse Scroll Wheel |
 | **Clear Canvas** | `C` key |
 | **Reset View** | `R` key |
+| **Undo** | `Ctrl + Z` |
+| **Redo** | `Ctrl + Shift + Z` |
 | **Exit** | `ESC` key |
+
+### Tool Wheel (Top-Left Corner)
+| Element | Action |
+|---------|--------|
+| **Top Segment** | Click to select Brush tool |
+| **Bottom Segment** | Click to select Eraser tool |
+| **Middle Ring** | Click to open width slider (0.01-200 pts) |
+| **Center Circle** | Click to open color picker |
 
 ## Usage
 
-1. **Drawing**: Click and hold the left mouse button, then drag to draw strokes
-   - Draw faster for thinner lines (less pressure)
-   - Draw slower for thicker lines (more pressure)
+1. **Selecting Tools**: 
+   - Click the **top segment** of the tool wheel to select the Brush
+   - Click the **bottom segment** to select the Eraser
+   - Active tool is highlighted with a darker/brighter color
 
-2. **Navigation**: 
+2. **Adjusting Width**: 
+   - Click the **middle ring** to open the width slider
+   - Range: 0.01 pts (ultra-fine) to 200 pts (bold)
+   - Use preset buttons for quick selection (Fine/Normal/Bold)
+   - Logarithmic slider for precise control across the range
+
+3. **Choosing Colors**: 
+   - Click the **center circle** to open the color picker
+   - Use the color wheel or preset buttons
+   - Eraser always uses white (background color)
+
+4. **Drawing/Erasing**: Click and hold left mouse button, then drag
+   - Draw faster for thinner lines (less pressure simulation)
+   - Draw slower for thicker lines (more pressure simulation)
+   - Eraser works the same way but removes strokes
+
+5. **Navigation**: 
    - Use middle/right mouse to pan around the canvas
    - Scroll to zoom in/out at cursor position
+   - Width automatically scales with zoom level
 
-3. **Management**:
-   - Press `C` to clear all strokes
-   - Press `R` to reset zoom and position
+6. **Management**:
+   - `Ctrl+Z` to undo (up to 7 actions)
+   - `Ctrl+Shift+Z` to redo
+   - `C` to clear all strokes
+   - `R` to reset zoom and position
 
 ## How It Works
 
@@ -190,12 +225,15 @@ Current OpenGL implementation can be extended:
 - Use instanced rendering for stroke segments
 
 ### Additional Features
+- ✅ Undo/redo system (implemented)
+- ✅ Color palette system (implemented)
+- ✅ Brush width control with extended range (implemented)
+- ✅ Eraser tool (implemented)
+- ✅ Save/Load file system with .mm format (implemented)
 - Multiple layers
-- Undo/redo system
 - Stroke selection and editing
 - Export to SVG/PDF
-- Custom brush styles
-- Color palette system
+- Custom brush styles and textures
 
 ## Troubleshooting
 
@@ -224,13 +262,15 @@ This is a proof-of-concept project for educational purposes.
 
 ## Future Work
 
+- [x] ~~Persistence (save/load)~~ ✅ **Implemented with .mm format**
 - [ ] Variable width along stroke (pressure mapping)
 - [ ] Stroke texture/pattern support
 - [ ] Multi-touch gestures
 - [ ] Hardware stylus integration
-- [ ] Persistence (save/load)
 - [ ] Vector export (SVG, PDF)
 - [ ] More sophisticated smoothing algorithms
+- [ ] Auto-save functionality
+- [ ] File thumbnails in open dialog
 
 ## References
 
