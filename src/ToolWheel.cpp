@@ -89,9 +89,15 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
     
     // ===== Middle ring: Brush width display =====
     
-    // Format width as "5.2 pts"
+    // Format width with appropriate precision based on size
     char width_text[32];
-    snprintf(width_text, sizeof(width_text), "%.1f pts", brushWidth);
+    if (brushWidth < 1.0f) {
+        snprintf(width_text, sizeof(width_text), "%.2f", brushWidth);
+    } else if (brushWidth < 10.0f) {
+        snprintf(width_text, sizeof(width_text), "%.1f", brushWidth);
+    } else {
+        snprintf(width_text, sizeof(width_text), "%.0f", brushWidth);
+    }
     
     // Calculate text size
     ImVec2 text_size = ImGui::CalcTextSize(width_text);
@@ -129,7 +135,7 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
         ImVec2 slider_pos = ImVec2(center.x + outer_radius + 20, center.y - 60);
         
         ImGui::SetNextWindowPos(slider_pos, ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(280, 120), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(280, 180), ImGuiCond_Always);
         
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | 
                                 ImGuiWindowFlags_NoResize |
@@ -149,25 +155,53 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
             ImGui::Spacing();
             ImGui::Spacing();
             
-            // Slider with preset marks
+            // Slider with extended range for extreme zoom levels
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
             ImGui::PushItemWidth(260);
             
-            if (ImGui::SliderFloat("##width", &brushWidth, 0.1f, 40.0f, "%.1f pts")) {
+            // Logarithmic slider for better control across wide range
+            if (ImGui::SliderFloat("##width", &brushWidth, 0.01f, 200.0f, "%.2f pts", ImGuiSliderFlags_Logarithmic)) {
                 // Slider changed
             }
             
             ImGui::PopItemWidth();
             
-            // Preset buttons below
+            ImGui::Spacing();
+            ImGui::Spacing();
+            
+            // Preset buttons below - organized by size
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
-            if (ImGui::Button("5 pts")) brushWidth = 5.0f;
+            ImGui::Text("Fine:");
             ImGui::SameLine();
-            if (ImGui::Button("10 pts")) brushWidth = 10.0f;
+            if (ImGui::Button("0.05")) brushWidth = 0.05f;
             ImGui::SameLine();
-            if (ImGui::Button("20 pts")) brushWidth = 20.0f;
+            if (ImGui::Button("0.1")) brushWidth = 0.1f;
             ImGui::SameLine();
-            if (ImGui::Button("40 pts")) brushWidth = 40.0f;
+            if (ImGui::Button("0.5")) brushWidth = 0.5f;
+            ImGui::SameLine();
+            if (ImGui::Button("1")) brushWidth = 1.0f;
+            
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
+            ImGui::Text("Normal:");
+            ImGui::SameLine();
+            if (ImGui::Button("5")) brushWidth = 5.0f;
+            ImGui::SameLine();
+            if (ImGui::Button("10")) brushWidth = 10.0f;
+            ImGui::SameLine();
+            if (ImGui::Button("20")) brushWidth = 20.0f;
+            ImGui::SameLine();
+            if (ImGui::Button("40")) brushWidth = 40.0f;
+            
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
+            ImGui::Text("Bold:");
+            ImGui::SameLine();
+            if (ImGui::Button("60")) brushWidth = 60.0f;
+            ImGui::SameLine();
+            if (ImGui::Button("100")) brushWidth = 100.0f;
+            ImGui::SameLine();
+            if (ImGui::Button("150")) brushWidth = 150.0f;
+            ImGui::SameLine();
+            if (ImGui::Button("200")) brushWidth = 200.0f;
         }
         ImGui::End();
         
@@ -183,7 +217,7 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
             bool outside_slider = (click_pos.x < slider_pos.x || 
                                    click_pos.x > slider_pos.x + 280 ||
                                    click_pos.y < slider_pos.y || 
-                                   click_pos.y > slider_pos.y + 120);
+                                   click_pos.y > slider_pos.y + 180);
             
             // Check if click is outside wheel
             bool outside_wheel = dist_to_center > outer_radius;
