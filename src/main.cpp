@@ -49,7 +49,8 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
             isDrawing = true;
             
             // Start new stroke with current tool settings
-            glm::vec3 color = toolWheel.getCurrentColor();
+            // Use effective color (white for eraser, selected color for brush)
+            glm::vec3 color = toolWheel.getEffectiveColor();
             float brushWidth = toolWheel.getBrushWidth();
             
             canvas.beginStroke(color, brushWidth);

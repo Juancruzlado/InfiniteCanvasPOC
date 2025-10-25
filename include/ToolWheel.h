@@ -7,10 +7,7 @@ namespace VectorSketch {
 // Tool types in the wheel
 enum class ToolType {
     BRUSH,
-    // Future tools can be added here:
-    // ERASER,
-    // SELECTOR,
-    // etc.
+    ERASER
 };
 
 // Tool wheel UI state
@@ -29,6 +26,11 @@ public:
     
     // Get current color (RGB)
     glm::vec3 getCurrentColor() const { return currentColor; }
+    
+    // Get effective drawing color (white for eraser, currentColor for brush)
+    glm::vec3 getEffectiveColor() const { 
+        return (currentTool == ToolType::ERASER) ? glm::vec3(1.0f, 1.0f, 1.0f) : currentColor; 
+    }
     
     // Check if mouse is over UI (to prevent drawing)
     bool isMouseOverUI() const { return mouseOverUI; }

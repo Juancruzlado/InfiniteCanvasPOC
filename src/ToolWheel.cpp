@@ -46,29 +46,76 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
     // Inner circle (black) - Color selector
     draw_list->AddCircleFilled(center, inner_radius, IM_COL32(0, 0, 0, 255), 64);
     
-    // ===== Brush Tool Segment (outer ring, top) =====
+    // ===== Tool Segments (outer ring) =====
+    const int arc_segments = 32;
+    
+    // Brush Tool Segment (top)
     float brush_angle_start = -M_PI / 2.0f - M_PI / 8.0f;
     float brush_angle_end = -M_PI / 2.0f + M_PI / 8.0f;
     
-    // Draw brush segment as filled arc (from middle_radius to outer_radius)
-    const int segments = 32;
-    ImVec2 prev_outer, prev_inner;
+    // Eraser Tool Segment (bottom)
+    float eraser_angle_start = M_PI / 2.0f - M_PI / 8.0f;
+    float eraser_angle_end = M_PI / 2.0f + M_PI / 8.0f;
     
-    for (int i = 0; i <= segments; i++) {
-        float t = (float)i / (float)segments;
+    // Check which tool segment is being clicked
+    if (mouse_over_wheel && dist_to_center > middle_radius && ImGui::IsMouseClicked(0)) {
+        // Calculate angle of mouse relative to center
+        float dx = mouse_pos.x - center.x;
+        float dy = mouse_pos.y - center.y;
+        float mouse_angle = atan2f(dy, dx);
+        
+        // Check if clicking on brush segment (top)
+        if (mouse_angle >= brush_angle_start && mouse_angle <= brush_angle_end) {
+            currentTool = ToolType::BRUSH;
+        }
+        // Check if clicking on eraser segment (bottom)
+        else if (mouse_angle >= eraser_angle_start && mouse_angle <= eraser_angle_end) {
+            currentTool = ToolType::ERASER;
+        }
+    }
+    
+    // Draw Brush segment
+    ImVec2 prev_outer, prev_inner;
+    ImU32 brush_color = (currentTool == ToolType::BRUSH) ? IM_COL32(40, 40, 40, 255) : IM_COL32(100, 100, 100, 255);
+    
+    for (int i = 0; i <= arc_segments; i++) {
+        float t = (float)i / (float)arc_segments;
         float angle = brush_angle_start + t * (brush_angle_end - brush_angle_start);
         
         float x_outer = center.x + cosf(angle) * outer_radius;
         float y_outer = center.y + sinf(angle) * outer_radius;
-        float x_inner = center.x + cosf(angle) * middle_radius;  // Changed from inner_radius
+        float x_inner = center.x + cosf(angle) * middle_radius;
         float y_inner = center.y + sinf(angle) * middle_radius;
         
         if (i > 0) {
-            // Draw quad between this point and previous
             draw_list->AddQuadFilled(
                 prev_inner, prev_outer,
                 ImVec2(x_outer, y_outer), ImVec2(x_inner, y_inner),
-                IM_COL32(40, 40, 40, 255)  // Black for brush
+                brush_color
+            );
+        }
+        
+        prev_outer = ImVec2(x_outer, y_outer);
+        prev_inner = ImVec2(x_inner, y_inner);
+    }
+    
+    // Draw Eraser segment
+    ImU32 eraser_color = (currentTool == ToolType::ERASER) ? IM_COL32(240, 100, 100, 255) : IM_COL32(150, 150, 150, 255);
+    
+    for (int i = 0; i <= arc_segments; i++) {
+        float t = (float)i / (float)arc_segments;
+        float angle = eraser_angle_start + t * (eraser_angle_end - eraser_angle_start);
+        
+        float x_outer = center.x + cosf(angle) * outer_radius;
+        float y_outer = center.y + sinf(angle) * outer_radius;
+        float x_inner = center.x + cosf(angle) * middle_radius;
+        float y_inner = center.y + sinf(angle) * middle_radius;
+        
+        if (i > 0) {
+            draw_list->AddQuadFilled(
+                prev_inner, prev_outer,
+                ImVec2(x_outer, y_outer), ImVec2(x_inner, y_inner),
+                eraser_color
             );
         }
         
@@ -77,15 +124,30 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
     }
     
     // Brush icon (wavy line symbol) in outer ring
-    float icon_angle = -M_PI / 2.0f;
-    float icon_radius = (outer_radius + middle_radius) / 2.0f;  // Middle of the outer ring
-    ImVec2 icon_center = ImVec2(
-        center.x + cosf(icon_angle) * icon_radius,
-        center.y + sinf(icon_angle) * icon_radius
+    float brush_icon_angle = -M_PI / 2.0f;
+    float icon_radius = (outer_radius + middle_radius) / 2.0f;
+    ImVec2 brush_icon_center = ImVec2(
+        center.x + cosf(brush_icon_angle) * icon_radius,
+        center.y + sinf(brush_icon_angle) * icon_radius
     );
     
-    // Draw simple brush icon (wavy line)
-    draw_list->AddCircleFilled(icon_center, 3.0f, IM_COL32(255, 255, 255, 255), 16);
+    // Draw simple brush icon (circle)
+    draw_list->AddCircleFilled(brush_icon_center, 3.0f, IM_COL32(255, 255, 255, 255), 16);
+    
+    // Eraser icon in outer ring
+    float eraser_icon_angle = M_PI / 2.0f;
+    ImVec2 eraser_icon_center = ImVec2(
+        center.x + cosf(eraser_icon_angle) * icon_radius,
+        center.y + sinf(eraser_icon_angle) * icon_radius
+    );
+    
+    // Draw eraser icon (small square)
+    float eraser_icon_size = 5.0f;
+    draw_list->AddRectFilled(
+        ImVec2(eraser_icon_center.x - eraser_icon_size/2, eraser_icon_center.y - eraser_icon_size/2),
+        ImVec2(eraser_icon_center.x + eraser_icon_size/2, eraser_icon_center.y + eraser_icon_size/2),
+        IM_COL32(255, 255, 255, 255)
+    );
     
     // ===== Middle ring: Brush width display =====
     
