@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Infinite Notes</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="dist/tailwind.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
   <style>
     * {
       margin: 0;
@@ -47,6 +49,153 @@
       color: #9ca3af;
     }
     
+    /* File Tree Styles */
+    .tree-item {
+      padding: 4px 8px;
+      margin: 2px 0;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background-color 0.15s;
+      user-select: none;
+    }
+    
+    .tree-item:hover {
+      background-color: rgba(99, 102, 241, 0.1);
+    }
+    
+    .tree-item.active {
+      background-color: rgba(99, 102, 241, 0.2);
+      border-left: 2px solid rgb(99, 102, 241);
+    }
+    
+    .tree-folder {
+      font-weight: 500;
+      color: #d1d5db;
+    }
+    
+    .tree-file {
+      color: #9ca3af;
+      font-size: 0.9em;
+    }
+    
+    .tree-children {
+      margin-left: 16px;
+      border-left: 1px solid #374151;
+      padding-left: 4px;
+    }
+    
+    .tree-children.collapsed {
+      display: none;
+    }
+    
+    .tree-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+    
+    .tree-chevron {
+      width: 12px;
+      height: 12px;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .tree-chevron.expanded {
+      transform: rotate(90deg);
+    }
+    
+    /* Context Menu */
+    .context-menu {
+      position: fixed;
+      background: #2d3748;
+      border: 1px solid #4a5568;
+      border-radius: 6px;
+      padding: 4px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      z-index: 10000;
+      min-width: 160px;
+    }
+    
+    .context-menu-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #e5e7eb;
+      font-size: 0.875rem;
+      transition: background-color 0.15s;
+    }
+    
+    .context-menu-item:hover {
+      background-color: #4a5568;
+    }
+    
+    .context-menu-item svg {
+      width: 16px;
+      height: 16px;
+    }
+    
+    .context-menu-item.text-red-400 {
+      color: #f87171;
+    }
+    
+    .context-menu-item.text-red-400:hover {
+      background-color: rgba(239, 68, 68, 0.2);
+    }
+    
+    /* Vault UI Styles */
+    .bg-gray-750 {
+      background-color: #2d3748;
+    }
+    
+    .bg-gray-850 {
+      background-color: #1e2433;
+    }
+    
+    .hover\\:bg-gray-750:hover {
+      background-color: #2d3748;
+    }
+    
+    #vaultSelectorModal .vault-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: background-color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    #vaultSelectorModal .vault-item:hover {
+      background-color: #374151;
+    }
+    
+    #vaultSelectorModal .vault-item.active {
+      background-color: #4b5563;
+    }
+    
+    #managerVaultList .vault-manager-item {
+      padding: 12px;
+      margin: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+    
+    #managerVaultList .vault-manager-item:hover {
+      background-color: #374151;
+    }
+    
+    #managerVaultList .vault-manager-item.selected {
+      background-color: #4b5563;
+      border: 1px solid #6366f1;
+    }
+    
     .status {
       position: fixed;
       bottom: 20px;
@@ -80,16 +229,208 @@
       color: white;
     }
     
+    /* Editor Container */
     #editor {
+      position: relative;
       background-color: #1f2937;
-      color: #e5e7eb;
-      font-family: 'Courier New', monospace;
-      resize: none;
-      outline: none;
+      height: 100%;
+      overflow: hidden;
     }
     
-    #editor:focus {
-      border-color: rgb(99, 102, 241);
+    /* Common styles for both layers */
+    .md-preview-layer,
+    .md-input-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 24px;
+      margin: 0;
+      border: none;
+      outline: none;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      overflow: auto;
+      box-sizing: border-box;
+    }
+    
+    /* Input layer (textarea - completely invisible) */
+    .md-input-layer {
+      background: transparent;
+      color: transparent;
+      caret-color: transparent; /* Hide native cursor */
+      resize: none;
+      z-index: 2;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .md-input-layer::selection {
+      background-color: rgba(99, 102, 241, 0.4);
+    }
+    
+    /* Preview layer (rendered behind with custom cursor) */
+    .md-preview-layer {
+      background-color: #1f2937;
+      color: #e5e7eb;
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    /* Custom cursor - positioned after rendering */
+    .md-cursor {
+      position: absolute;
+      width: 2px;
+      background-color: #60a5fa;
+      pointer-events: none;
+      z-index: 3;
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    
+    /* Cursor position marker (invisible) */
+    #cursor-marker {
+      display: inline;
+      width: 0;
+      height: 0;
+      position: relative;
+    }
+    
+    .md-content {
+      margin: 0;
+      padding: 0;
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    /* Headers - proper Obsidian sizes */
+    .md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6 {
+      display: inline;
+      font-weight: 700;
+    }
+    
+    .md-h1 {
+      font-size: 2em;
+      color: #f3f4f6;
+      font-weight: 800;
+    }
+    
+    .md-h2 {
+      font-size: 1.6em;
+      color: #f3f4f6;
+      font-weight: 700;
+    }
+    
+    .md-h3 {
+      font-size: 1.4em;
+      color: #e5e7eb;
+      font-weight: 700;
+    }
+    
+    .md-h4, .md-h5, .md-h6 {
+      font-size: 1.2em;
+      color: #d1d5db;
+      font-weight: 600;
+    }
+    
+    /* Bold and Italic */
+    strong {
+      font-weight: 700;
+      color: #f3f4f6;
+    }
+    
+    em {
+      font-style: italic;
+      color: #f3f4f6;
+    }
+    
+    /* Lists - smaller bullet points like Obsidian */
+    .md-list-bullet {
+      color: #6b7280;
+      font-weight: 400;
+      font-size: 0.6em;
+      vertical-align: middle;
+      display: inline-block;
+    }
+    
+    /* Horizontal rule */
+    .md-hr {
+      color: #6b7280;
+      opacity: 0.4;
+    }
+    
+    /* Blockquote */
+    .md-quote {
+      color: #9ca3af;
+      font-style: italic;
+    }
+    
+    .md-quote .md-syntax {
+      color: #6366f1;
+      opacity: 1;
+    }
+    
+    /* Inline code */
+    .md-inline-code {
+      background-color: #374151;
+      color: #f87171;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+    
+    /* Links */
+    .md-link {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+    
+    .md-url {
+      color: #60a5fa;
+      opacity: 0.7;
+    }
+    
+    /* Code block - compact like Obsidian */
+    .md-code-block {
+      display: block;
+      background-color: #1a1f2e;
+      border-radius: 4px;
+      margin: 4px 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    
+    .md-code-lang,
+    .md-code-close {
+      display: block;
+      color: #6b7280;
+      font-family: 'Courier New', Consolas, Monaco, monospace;
+      font-size: 0.85em;
+      padding: 2px 12px;
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+    
+    .md-code-content {
+      display: block;
+      background-color: #1a1f2e;
+      color: #e2e8f0;
+      padding: 8px 12px;
+      margin: 0;
+      font-family: 'Courier New', Consolas, Monaco, monospace;
+      font-size: 0.9em;
+      line-height: 1.4;
+      white-space: pre;
+      overflow-x: auto;
     }
     
     button:disabled {
@@ -109,6 +450,117 @@
     .btn:active:not(:disabled) {
       transform: translateY(0);
     }
+    
+    /* Tab Styles */
+    .tabs-bar {
+      min-height: 40px;
+      max-height: 40px;
+      overflow: hidden;
+    }
+    
+    #tabsContainer {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      max-width: calc(100% - 48px);
+    }
+    
+    #tabsContainer::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background-color: transparent;
+      border-right: 1px solid #374151;
+      cursor: pointer;
+      transition: background-color 0.15s;
+      user-select: none;
+      white-space: nowrap;
+      min-width: 120px;
+      max-width: 200px;
+    }
+    
+    .tab:hover {
+      background-color: rgba(75, 85, 99, 0.3);
+    }
+    
+    .tab.active {
+      background-color: #2d3748;
+    }
+    
+    .tab.dragging {
+      opacity: 0.5;
+    }
+    
+    .tab-name {
+      flex: 1;
+      font-size: 0.875rem;
+      color: #d1d5db;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .tab.active .tab-name {
+      color: #e5e7eb;
+      font-weight: 500;
+    }
+    
+    .tab-close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px;
+      border-radius: 3px;
+      color: #9ca3af;
+      transition: all 0.15s;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .tab-close:hover {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+    
+    #newTabBtn {
+      flex-shrink: 0 !important;
+      border-left: 2px solid #6366f1;
+      min-width: 48px !important;
+      width: 48px !important;
+      height: 40px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background-color: #374151 !important;
+      border-top: none;
+      border-right: none;
+      border-bottom: none;
+      cursor: pointer;
+      color: #ffffff !important;
+      padding: 0;
+      margin: 0;
+      z-index: 100;
+      position: relative;
+    }
+    
+    #newTabBtn:hover {
+      background-color: rgba(99, 102, 241, 0.4) !important;
+      color: #ffffff !important;
+    }
+    
+    #newTabBtn svg {
+      pointer-events: none;
+      width: 20px !important;
+      height: 20px !important;
+    }
+    
+    .tab.drag-over {
+      border-left: 2px solid #6366f1;
+    }
   </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -117,41 +569,49 @@
     
     <!-- Sidebar -->
     <div class="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
-      <!-- Header -->
-      <div class="p-6 border-b border-gray-700">
-        <h1 class="text-2xl font-bold flex items-center gap-2">
-          <span class="text-3xl">📝</span>
-          <span>Infinite Notes</span>
-        </h1>
-        <p class="text-sm text-gray-400 mt-1">Notes + C++ Canvas</p>
-      </div>
       
       <!-- Actions -->
-      <div class="p-4 space-y-2 border-b border-gray-700">
-        <button id="newNoteBtn" class="btn w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
-          <span class="text-xl">+</span>
-          <span>New Note</span>
-        </button>
+      <div class="p-4 border-b border-gray-700">
+        <div class="flex gap-2 mb-3">
+          <button id="newNoteBtn" class="btn flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg flex items-center justify-center gap-2" title="New Note">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+            </svg>
+          </button>
+          
+          <button id="newFolderBtn" class="btn flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-3 rounded-lg flex items-center justify-center gap-2" title="New Folder">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+            </svg>
+          </button>
+        </div>
         
-        <button id="openCanvasBtn" class="btn w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
+        <button id="openCanvasBtn" class="btn w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2">
           <span class="text-xl">🎨</span>
           <span>Open Canvas</span>
         </button>
       </div>
       
-      <!-- Notes List -->
-      <div class="flex-1 overflow-y-auto p-4">
-        <h2 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Your Notes</h2>
-        <div id="notesList" class="space-y-1">
-          <!-- Notes will be inserted here by JavaScript -->
+      <!-- File Tree -->
+      <div id="filePanel" class="flex-1 overflow-y-auto p-4">
+        <h2 class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Files</h2>
+        <div id="fileTree" class="text-sm">
+          <!-- File tree will be inserted here by JavaScript -->
         </div>
       </div>
       
-      <!-- Footer Info -->
-      <div class="p-4 border-t border-gray-700 text-xs text-gray-500">
-        <div class="flex items-center gap-2">
-          <span>⚡</span>
-          <span>Electron + C++ OpenGL</span>
+      <!-- Vault Selector Footer -->
+      <div id="vaultFooter" class="p-3 border-t border-gray-700 cursor-pointer hover:bg-gray-750 transition" title="Switch vault">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+            </svg>
+            <span id="currentVaultName" class="text-sm font-medium text-gray-300">No Vault</span>
+          </div>
+          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
         </div>
       </div>
     </div>
@@ -159,48 +619,21 @@
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col">
       
-      <!-- Editor Header -->
-      <div class="bg-gray-800 border-b border-gray-700 p-4 flex items-center justify-between">
-        <h2 class="text-xl font-semibold text-gray-300">Markdown Editor</h2>
-        
-        <!-- Canvas Controls -->
-        <div class="flex gap-2">
-          <button id="saveBtn" class="btn bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2">
-            <span>💾</span>
-            <span>Save Drawing</span>
-          </button>
-          
-          <button id="loadBtn" class="btn bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2">
-            <span>📂</span>
-            <span>Load Drawing</span>
-          </button>
-          
-          <button id="clearBtn" class="btn bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2">
-            <span>🗑️</span>
-            <span>Clear</span>
-          </button>
+      <!-- Editor Header - Obsidian-style Tabs -->
+      <div class="bg-gray-800 border-b border-gray-700 tabs-bar" style="display: flex; align-items: center;">
+        <div id="tabsContainer" class="flex items-center overflow-x-auto" style="flex: 1 1 auto; min-width: 0;">
+          <!-- Tabs will be inserted here dynamically -->
         </div>
+        <button id="newTabBtn" title="New note" style="flex: 0 0 auto;">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+        </button>
       </div>
       
-      <!-- Editor -->
-      <div class="flex-1 p-6 overflow-hidden">
-        <textarea 
-          id="editor" 
-          class="w-full h-full p-6 rounded-lg border border-gray-700 text-base leading-relaxed"
-          placeholder="Start writing your notes here...
-
-# Markdown Support
-- **Bold** and *italic*
-- Lists and checkboxes
-- Links and images
-
-## Open the Canvas
-Click 'Open Canvas' to start drawing visual notes!
-
-## Shortcuts
-- Ctrl+S: Save drawing
-- Ctrl+O: Load drawing
-- Ctrl+N: New note"></textarea>
+      <!-- Editor (CodeMirror 6) -->
+      <div class="flex-1 overflow-hidden">
+        <div id="editor" class="w-full h-full"></div>
       </div>
       
       <!-- Help Section -->
@@ -222,10 +655,285 @@ Click 'Open Canvas' to start drawing visual notes!
     </div>
   </div>
   
+  <!-- Debug Console (always visible in development) -->
+  <div id="debugConsole" style="
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 200px;
+    background: #1e1e1e;
+    color: #f0f0f0;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 10px;
+    overflow: auto;
+    z-index: 10000;
+    border-top: 2px solid #444;
+    display: flex;
+    flex-direction: column;
+  ">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #444;">
+      <strong>Debug Console</strong>
+      <button id="clearConsole" style="background: #444; color: white; border: none; padding: 2px 8px; border-radius: 3px; cursor: pointer;">Clear</button>
+    </div>
+    <div id="consoleOutput" style="flex: 1; overflow: auto;"></div>
+  </div>
+
   <!-- Status Notification -->
   <div id="status" class="status hidden"></div>
   
-  <!-- Load Renderer Script -->
-  <script src="renderer.js"></script>
+  <!-- Input Modal -->
+  <div id="inputModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-gray-800 rounded-lg p-6 w-96 border border-gray-600">
+      <h3 id="modalTitle" class="text-lg font-semibold mb-4 text-white"></h3>
+      <input 
+        id="modalInput" 
+        type="text" 
+        class="w-full bg-gray-700 text-white px-4 py-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+        placeholder="Enter name..."
+      />
+      <div class="flex gap-2 mt-4">
+        <button id="modalCancel" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded">
+          Cancel
+        </button>
+        <button id="modalConfirm" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded">
+          Create
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Vault Selector Modal -->
+  <div id="vaultSelectorModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
+    <div class="bg-gray-800 rounded-lg p-1 w-80 border border-gray-600 shadow-2xl">
+      <div id="vaultList" class="max-h-96 overflow-y-auto">
+        <!-- Vault list will be inserted here -->
+      </div>
+      <div class="border-t border-gray-600 pt-1">
+        <button id="manageVaultsBtn" class="w-full text-left px-4 py-2 hover:bg-gray-700 text-gray-300 flex items-center gap-2 rounded">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          <span>Manage vaults...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Vault Manager Modal -->
+  <div id="vaultManagerModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
+    <div class="bg-gray-800 rounded-lg w-2/3 max-w-4xl border border-gray-600 shadow-2xl flex overflow-hidden" style="height: 70vh;">
+      <!-- Left sidebar with vault list -->
+      <div class="w-1/3 bg-gray-850 border-r border-gray-600 flex flex-col">
+        <div class="p-4 border-b border-gray-600">
+          <h3 class="text-lg font-semibold text-white">Your Vaults</h3>
+        </div>
+        <div id="managerVaultList" class="flex-1 overflow-y-auto p-2">
+          <!-- Vault list will be inserted here -->
+        </div>
+      </div>
+      
+      <!-- Right panel with actions -->
+      <div class="flex-1 flex flex-col">
+        <div class="flex-1 flex items-center justify-center p-8">
+          <div class="text-center max-w-md">
+            <div class="mb-8">
+              <svg class="w-24 h-24 mx-auto text-purple-400 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path>
+              </svg>
+            </div>
+            
+            <h2 class="text-2xl font-bold text-white mb-4">Manage Your Vaults</h2>
+            <p class="text-gray-400 mb-8">Create a new vault or open an existing folder of Markdown files.</p>
+            
+            <div class="space-y-3">
+              <button id="createVaultBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span>Create new vault</span>
+              </button>
+              
+              <button id="openVaultBtn" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                </svg>
+                <span>Open folder as vault</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="p-4 border-t border-gray-600 flex justify-end">
+          <button id="closeManagerBtn" class="bg-gray-600 hover:bg-gray-500 text-white px-6 py-2 rounded">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Load Scripts -->
+  <!-- Editor Container -->
+  <div id="editor" class="flex-1 flex flex-col">
+    <div class="flex items-center border-b border-gray-700 bg-gray-800" id="tabsContainer">
+      <button id="newTabBtn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+        </svg>
+      </button>
+    </div>
+    <div id="editorContainer" class="flex-1 overflow-auto">
+      <!-- CodeMirror will be initialized here -->
+    </div>
+  </div>
+
+  <script>
+    console.log('Loading CodeMirror bundle...');
+    
+    // Create a promise to track when CodeMirror is loaded
+    window.codeMirrorReady = new Promise((resolve) => {
+      window.resolveCodeMirror = resolve;
+    });
+    
+    window.onCodeMirrorLoaded = function(CodeMirrorEditor) {
+      console.log('CodeMirror bundle loaded successfully');
+      window.CodeMirrorEditor = CodeMirrorEditor;
+      
+      // Resolve the promise when CodeMirror is loaded
+      if (window.resolveCodeMirror) {
+        window.resolveCodeMirror(CodeMirrorEditor);
+      }
+      
+      // Load renderer after CodeMirror is ready
+      const script = document.createElement('script');
+      script.src = 'renderer.js';
+      document.body.appendChild(script);
+    };
+    
+    // Error handler for script loading
+    window.onerror = function(message, source, lineno, colno, error) {
+      console.error('Global error:', { message, source, lineno, colno, error });
+      return false;
+    };
+  </script>
+  
+  <!-- Enhanced CodeMirror bundle loading with better error handling -->
+  <script>
+    console.log('Loading CodeMirror bundle...');
+    
+    // Create a promise that resolves when CodeMirror is ready
+    window.codeMirrorReady = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'codemirror-bundle.js';
+      script.async = true;
+      
+      script.onload = () => {
+        console.log('CodeMirror bundle loaded successfully');
+        if (window.CodeMirrorEditor && typeof window.CodeMirrorEditor.createEditor === 'function') {
+          console.log('CodeMirrorEditor is available:', window.CodeMirrorEditor);
+          resolve(window.CodeMirrorEditor);
+        } else {
+          const error = new Error('CodeMirrorEditor not properly exported');
+          console.error('CodeMirror bundle loaded but CodeMirrorEditor is not available');
+        }
+        
+        // Format the message
+        const timestamp = new Date().toISOString().substr(11, 12);
+        const messages = Array.from(args).map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+        );
+        
+        line.textContent = `[${timestamp}] [${level.toUpperCase()}] ${messages.join(' ')}`;
+        output.appendChild(line);
+        output.scrollTop = output.scrollHeight;
+      }
+      
+      // Override console methods
+      return {
+        log: function() {
+          originalConsole.log.apply(originalConsole, arguments);
+          logToUI('log', arguments);
+        },
+        error: function() {
+          originalConsole.error.apply(originalConsole, arguments);
+          logToUI('error', arguments);
+        },
+        warn: function() {
+          originalConsole.warn.apply(originalConsole, arguments);
+          logToUI('warn', arguments);
+        },
+        info: function() {
+          originalConsole.info.apply(originalConsole, arguments);
+          logToUI('info', arguments);
+        }
+      };
+    })();
+    
+    // Replace console with our enhanced version
+    window.console = debugConsole;
+    
+    // Clear console button
+    document.getElementById('clearConsole')?.addEventListener('click', () => {
+      const output = document.getElementById('consoleOutput');
+      if (output) output.innerHTML = '';
+    });
+    
+    // Log initial state
+    console.log('Initializing application...');
+    console.log('Window loaded at:', new Date().toISOString());
+    
+    // Load CodeMirror with better error handling
+    const loadCodeMirror = () => {
+      console.log('Loading CodeMirror bundle...');
+      
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'codemirror-bundle.js';
+        script.async = true;
+        
+        script.onload = () => {
+          console.log('CodeMirror bundle loaded');
+          
+          if (window.CodeMirrorEditor && typeof window.CodeMirrorEditor.createEditor === 'function') {
+            console.log('CodeMirrorEditor is available');
+            resolve(window.CodeMirrorEditor);
+          } else {
+            const error = new Error('CodeMirrorEditor not properly exported');
+            console.error('CodeMirror bundle loaded but CodeMirrorEditor is not available');
+            console.error('Global object keys:', Object.keys(window).filter(k => k.includes('CodeMirror') || k.includes('Editor')));
+            reject(error);
+          }
+        };
+        
+        script.onerror = (error) => {
+          const errorMsg = `Failed to load CodeMirror bundle: ${error?.message || 'Unknown error'}`;
+          console.error(errorMsg);
+          reject(new Error(errorMsg));
+        };
+        
+        document.head.appendChild(script);
+      });
+    };
+    
+    // Make CodeMirror loading available globally
+    window.codeMirrorReady = loadCodeMirror();
+    
+    // Global error handler
+    window.onerror = (message, source, lineno, colno, error) => {
+      const errorMsg = `Global error: ${message} at ${source}:${lineno}:${colno}`;
+      console.error(errorMsg, error);
+      console.error('Global error:', { message, source, lineno, colno, error });
+      return true; // Prevent default error handling
+    };
+    
+    // Unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      console.error('Promise:', event.promise);
+    });
+  </script>
 </body>
 </html>

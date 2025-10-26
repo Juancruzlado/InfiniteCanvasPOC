@@ -5,14 +5,39 @@
   "main": "main.js",
   "scripts": {
     "build-native": "cd .. && npm install && npm run build",
-    "start": "electron .",
-    "dev": "npm run build-native && npm start"
+    "build-editor": "esbuild codemirror-editor.js --bundle --outfile=codemirror-bundle.js --format=iife --global-name=CodeMirrorEditor",
+    "build:css": "tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.css --minify",
+    "prebuild": "npm run build-editor",
+    "start": "npm run build:css && npm run build-editor && electron .",
+    "dev": "npm run build-native && npm start",
+    "watch:css": "tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.css --watch"
   },
-  "keywords": ["electron", "notes", "canvas", "cpp"],
+  "keywords": [
+    "electron",
+    "notes",
+    "canvas",
+    "cpp"
+  ],
   "author": "",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.12.0",
+    "@codemirror/commands": "^6.3.3",
+    "@codemirror/lang-markdown": "^6.2.4",
+    "@codemirror/language": "^6.10.0",
+    "@codemirror/language-data": "^6.4.1",
+    "@codemirror/lint": "^6.5.0",
+    "@codemirror/search": "^6.5.5",
+    "@codemirror/state": "^6.4.0",
+    "@codemirror/view": "^6.23.0",
+    "@lezer/highlight": "^1.2.0"
+  },
   "devDependencies": {
-    "electron": "^28.0.0"
+    "autoprefixer": "^10.4.21",
+    "electron": "^28.0.0",
+    "esbuild": "^0.19.12",
+    "ll": "^1.2.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.10"
   }
 }
