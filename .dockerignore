@@ -1,0 +1,24 @@
+# Node modules (will be installed in container)
+node_modules/
+electron-demo/node_modules/
+
+# Build artifacts
+build/
+*.node
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation (no need to copy)
+*.md

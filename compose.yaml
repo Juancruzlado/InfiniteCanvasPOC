@@ -1,0 +1,45 @@
+services:
+  electron-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: infinite-canvas-builder
+    
+    # X11 forwarding for OpenGL window
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - ELECTRON_DISABLE_SANDBOX=1
+      - LIBGL_ALWAYS_SOFTWARE=1
+      - GALLIUM_DRIVER=llvmpipe
+      - MESA_GL_VERSION_OVERRIDE=3.3
+    
+    volumes:
+      # Mount source code
+      - .:/workspace
+      # Mount X11 socket for GUI
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # Cache node_modules for faster rebuilds
+      - node_modules:/workspace/electron-demo/node_modules
+    
+    # Network mode for X11
+    network_mode: host
+    
+    # Allow GUI apps
+    security_opt:
+      - seccomp:unconfined
+    
+    # Give access to GPU (for OpenGL)
+    devices:
+      - /dev/dri:/dev/dri
+    
+    working_dir: /workspace
+    
+    # Keep container running
+    stdin_open: true
+    tty: true
+    
+    command: /bin/bash
+
+volumes:
+  node_modules:

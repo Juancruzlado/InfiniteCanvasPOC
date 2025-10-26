@@ -1,0 +1,17 @@
+{
+  "name": "infinite-canvas-cpp",
+  "version": "1.0.0",
+  "description": "C++ infinite canvas with Node.js bindings",
+  "main": "build/Release/infinitecanvas.node",
+  "scripts": {
+    "preinstall": "bash setup-imgui.sh",
+    "install": "node-gyp rebuild",
+    "build": "node-gyp rebuild",
+    "clean": "node-gyp clean"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.0.0",
+    "node-gyp": "^10.0.0"
+  },
+  "gypfile": true
+}
