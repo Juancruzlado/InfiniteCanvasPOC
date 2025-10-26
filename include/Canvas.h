@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <set>
 
 namespace VectorSketch {
 
@@ -43,6 +44,13 @@ public:
     bool saveToFile(const std::string& filepath);
     bool loadFromFile(const std::string& filepath);
     
+    // Selection system
+    void selectStrokesInPolygon(const std::vector<glm::vec2>& lassoPoints);
+    void clearSelection();
+    void moveSelectedStrokes(const glm::vec2& delta);
+    bool hasSelection() const { return !selectedStrokes.empty(); }
+    const std::set<size_t>& getSelectedStrokes() const { return selectedStrokes; }
+    
 private:
     void saveToHistory();
     void loadFromHistory(size_t index);
@@ -50,10 +58,16 @@ private:
     std::vector<std::shared_ptr<Stroke>> strokes;
     std::shared_ptr<Stroke> currentStroke;
     
+    // Selection system
+    std::set<size_t> selectedStrokes; // Indices of selected strokes
+    
     // History for undo/redo (max 7 states)
     static constexpr size_t MAX_HISTORY = 7;
     std::vector<std::vector<std::shared_ptr<Stroke>>> history;
     size_t historyIndex = 0;
+    
+    // Helper: Check if point is inside polygon (for lasso)
+    bool pointInPolygon(const glm::vec2& point, const std::vector<glm::vec2>& polygon) const;
 };
 
 } // namespace VectorSketch

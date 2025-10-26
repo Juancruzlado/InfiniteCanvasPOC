@@ -11,8 +11,9 @@ A C++ proof-of-concept application that simulates the infinite canvas vector ske
 - 🖱️ **Pressure Simulation**: Mouse speed simulates pen pressure (works with stylus input too)
 - 🎨 **Tool Wheel UI**: Interactive circular UI for tool selection, brush width (0.01-200 pts), and color picking
 - 🖌️ **Brush & Eraser**: Switch between drawing and erasing with the same width controls
+- 🎯 **Lasso Tool**: Select and move parts of your drawing with free-form selection
 - ↩️ **Undo/Redo**: History system supporting up to 7 actions
-- 💾 **Save/Load**: Persistent storage in binary .mm (Mind Map) file format with full file browser
+- 💾 **Save/Load**: Persistent storage in binary .mm (Mind Map) file format with native system dialogs
 
 ## Architecture
 
@@ -137,6 +138,7 @@ make -j$(nproc)
 |---------|--------|
 | **Top Segment** | Click to select Brush tool |
 | **Bottom Segment** | Click to select Eraser tool |
+| **Left Segment** | Click to select Lasso tool (selection) |
 | **Middle Ring** | Click to open width slider (0.01-200 pts) |
 | **Center Circle** | Click to open color picker |
 
@@ -145,7 +147,8 @@ make -j$(nproc)
 1. **Selecting Tools**: 
    - Click the **top segment** of the tool wheel to select the Brush
    - Click the **bottom segment** to select the Eraser
-   - Active tool is highlighted with a darker/brighter color
+   - Click the **left segment** to select the Lasso (selection tool)
+   - Active tool is highlighted with a distinctive color
 
 2. **Adjusting Width**: 
    - Click the **middle ring** to open the width slider
@@ -158,17 +161,24 @@ make -j$(nproc)
    - Use the color wheel or preset buttons
    - Eraser always uses white (background color)
 
-4. **Drawing/Erasing**: Click and hold left mouse button, then drag
+4. **Using the Lasso** (Selection and Movement):
+   - Click the **left segment** to activate Lasso tool
+   - **To select**: Click and drag to draw a contour around strokes
+   - Release to complete selection - all enclosed strokes are selected
+   - **To move**: With selection active, click and drag to move strokes
+   - Press `ESC` or right-click to deselect
+
+5. **Drawing/Erasing**: Click and hold left mouse button, then drag
    - Draw faster for thinner lines (less pressure simulation)
    - Draw slower for thicker lines (more pressure simulation)
    - Eraser works the same way but removes strokes
 
-5. **Navigation**: 
+6. **Navigation**: 
    - Use middle/right mouse to pan around the canvas
    - Scroll to zoom in/out at cursor position
    - Width automatically scales with zoom level
 
-6. **Management**:
+7. **Management**:
    - `Ctrl+Z` to undo (up to 7 actions)
    - `Ctrl+Shift+Z` to redo
    - `C` to clear all strokes
@@ -229,9 +239,10 @@ Current OpenGL implementation can be extended:
 - ✅ Color palette system (implemented)
 - ✅ Brush width control with extended range (implemented)
 - ✅ Eraser tool (implemented)
+- ✅ Lasso selection and movement tool (implemented)
 - ✅ Save/Load file system with .mm format (implemented)
 - Multiple layers
-- Stroke selection and editing
+- Advanced transformations (rotate, scale)
 - Export to SVG/PDF
 - Custom brush styles and textures
 

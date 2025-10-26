@@ -289,4 +289,64 @@ bool Canvas::loadFromFile(const std::string& filepath) {
     }
 }
 
+// Point-in-polygon test using ray casting algorithm
+bool Canvas::pointInPolygon(const glm::vec2& point, const std::vector<glm::vec2>& polygon) const {
+    if (polygon.size() < 3) return false;
+    
+    bool inside = false;
+    size_t j = polygon.size() - 1;
+    
+    for (size_t i = 0; i < polygon.size(); i++) {
+        if ((polygon[i].y > point.y) != (polygon[j].y > point.y) &&
+            (point.x < (polygon[j].x - polygon[i].x) * (point.y - polygon[i].y) / 
+                       (polygon[j].y - polygon[i].y) + polygon[i].x)) {
+            inside = !inside;
+        }
+        j = i;
+    }
+    
+    return inside;
+}
+
+void Canvas::selectStrokesInPolygon(const std::vector<glm::vec2>& lassoPoints) {
+    selectedStrokes.clear();
+    
+    std::cout << "Lasso selection: checking " << strokes.size() << " total strokes" << std::endl;
+    
+    // Check each stroke
+    for (size_t i = 0; i < strokes.size(); ++i) {
+        const auto& stroke = strokes[i];
+        const auto& points = stroke->getPoints();
+        
+        // If any point of the stroke is inside the lasso, select it
+        for (const auto& point : points) {
+            if (pointInPolygon(point.position, lassoPoints)) {
+                selectedStrokes.insert(i);
+                std::cout << "  → Stroke " << i << " selected (has " << points.size() << " points)" << std::endl;
+                break; // Found at least one point inside, select this stroke
+            }
+        }
+    }
+    
+    std::cout << "✓ Selected " << selectedStrokes.size() << " out of " << strokes.size() << " stroke(s)" << std::endl;
+}
+
+void Canvas::clearSelection() {
+    selectedStrokes.clear();
+}
+
+void Canvas::moveSelectedStrokes(const glm::vec2& delta) {
+    if (selectedStrokes.empty()) return;
+    
+    std::cout << "Moving " << selectedStrokes.size() << " strokes by delta(" 
+              << delta.x << ", " << delta.y << ")" << std::endl;
+    
+    // Move all points in selected strokes
+    for (size_t idx : selectedStrokes) {
+        if (idx < strokes.size()) {
+            strokes[idx]->movePoints(delta);
+        }
+    }
+}
+
 } // namespace VectorSketch

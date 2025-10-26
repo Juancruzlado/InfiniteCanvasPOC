@@ -26,6 +26,9 @@ public:
     float getBaseWidth() const { return baseWidth; }
     void setBaseWidth(float w) { baseWidth = w; }
     
+    // Move all points by delta (for lasso tool)
+    void movePoints(const glm::vec2& delta);
+    
 private:
     std::vector<StrokePoint> points;
     glm::vec3 color{0.0f, 0.0f, 0.0f}; // Black by default

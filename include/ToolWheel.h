@@ -7,7 +7,8 @@ namespace VectorSketch {
 // Tool types in the wheel
 enum class ToolType {
     BRUSH,
-    ERASER
+    ERASER,
+    LASSO
 };
 
 // Tool wheel UI state

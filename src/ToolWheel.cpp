@@ -57,12 +57,25 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
     float eraser_angle_start = M_PI / 2.0f - M_PI / 8.0f;
     float eraser_angle_end = M_PI / 2.0f + M_PI / 8.0f;
     
+    // Lasso Tool Segment (left)
+    float lasso_angle_start = M_PI - M_PI / 8.0f;
+    float lasso_angle_end = M_PI + M_PI / 8.0f;
+    
     // Check which tool segment is being clicked
     if (mouse_over_wheel && dist_to_center > middle_radius && ImGui::IsMouseClicked(0)) {
         // Calculate angle of mouse relative to center
         float dx = mouse_pos.x - center.x;
         float dy = mouse_pos.y - center.y;
         float mouse_angle = atan2f(dy, dx);
+        
+        // Normalize angle to handle wrapping at PI/-PI boundary
+        auto normalizeAngle = [](float angle) {
+            while (angle > M_PI) angle -= 2.0f * M_PI;
+            while (angle < -M_PI) angle += 2.0f * M_PI;
+            return angle;
+        };
+        
+        mouse_angle = normalizeAngle(mouse_angle);
         
         // Check if clicking on brush segment (top)
         if (mouse_angle >= brush_angle_start && mouse_angle <= brush_angle_end) {
@@ -71,6 +84,10 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
         // Check if clicking on eraser segment (bottom)
         else if (mouse_angle >= eraser_angle_start && mouse_angle <= eraser_angle_end) {
             currentTool = ToolType::ERASER;
+        }
+        // Check if clicking on lasso segment (left) - handle PI boundary
+        else if (mouse_angle >= lasso_angle_start || mouse_angle <= lasso_angle_end - 2.0f * M_PI) {
+            currentTool = ToolType::LASSO;
         }
     }
     
@@ -148,6 +165,52 @@ void ToolWheel::render(int windowWidth, int windowHeight) {
         ImVec2(eraser_icon_center.x + eraser_icon_size/2, eraser_icon_center.y + eraser_icon_size/2),
         IM_COL32(255, 255, 255, 255)
     );
+    
+    // Draw Lasso segment
+    ImU32 lasso_color = (currentTool == ToolType::LASSO) ? IM_COL32(100, 200, 255, 255) : IM_COL32(130, 130, 130, 255);
+    
+    for (int i = 0; i <= arc_segments; i++) {
+        float t = (float)i / (float)arc_segments;
+        float angle = lasso_angle_start + t * (lasso_angle_end - lasso_angle_start);
+        
+        float x_outer = center.x + cosf(angle) * outer_radius;
+        float y_outer = center.y + sinf(angle) * outer_radius;
+        float x_inner = center.x + cosf(angle) * middle_radius;
+        float y_inner = center.y + sinf(angle) * middle_radius;
+        
+        if (i > 0) {
+            draw_list->AddQuadFilled(
+                prev_inner, prev_outer,
+                ImVec2(x_outer, y_outer), ImVec2(x_inner, y_inner),
+                lasso_color
+            );
+        }
+        
+        prev_outer = ImVec2(x_outer, y_outer);
+        prev_inner = ImVec2(x_inner, y_inner);
+    }
+    
+    // Lasso icon in outer ring (circular dashed pattern)
+    float lasso_icon_angle = M_PI;
+    ImVec2 lasso_icon_center = ImVec2(
+        center.x + cosf(lasso_icon_angle) * icon_radius,
+        center.y + sinf(lasso_icon_angle) * icon_radius
+    );
+    
+    // Draw lasso icon as a dashed circle
+    for (int i = 0; i < 8; i++) {
+        float angle1 = i * M_PI / 4.0f;
+        float angle2 = angle1 + M_PI / 8.0f;
+        ImVec2 p1 = ImVec2(
+            lasso_icon_center.x + cosf(angle1) * 3.5f,
+            lasso_icon_center.y + sinf(angle1) * 3.5f
+        );
+        ImVec2 p2 = ImVec2(
+            lasso_icon_center.x + cosf(angle2) * 3.5f,
+            lasso_icon_center.y + sinf(angle2) * 3.5f
+        );
+        draw_list->AddLine(p1, p2, IM_COL32(255, 255, 255, 255), 1.5f);
+    }
     
     // ===== Middle ring: Brush width display =====
     

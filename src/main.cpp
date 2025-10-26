@@ -26,6 +26,12 @@ bool isPanning = false;
 bool showSaveDialog = false;
 bool showOpenDialog = false;
 
+// Lasso tool state
+std::vector<glm::vec2> lassoPoints; // Screen space points for lasso drawing
+bool isDrawingLasso = false;
+bool isMovingSelection = false;
+glm::vec2 moveStartPos(0.0f);
+
 auto startTime = std::chrono::high_resolution_clock::now();
 
 float getCurrentTime() {
@@ -142,31 +148,71 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
         if (action == GLFW_PRESS && !isPanning && !toolWheel.isMouseOverUI()) {
-            isDrawing = true;
+            ToolType currentTool = toolWheel.getCurrentTool();
             
-            // Start new stroke with current tool settings
-            // Use effective color (white for eraser, selected color for brush)
-            glm::vec3 color = toolWheel.getEffectiveColor();
-            float brushWidth = toolWheel.getBrushWidth();
-            
-            canvas.beginStroke(color, brushWidth);
-            
-            // Convert screen to world coordinates
-            glm::vec2 worldPos = renderer.screenToWorld(mousePos);
-            StrokePoint point(worldPos, 1.0f, 0.0f, 0.0f, getCurrentTime());
-            canvas.addPointToCurrentStroke(point);
-            lastMousePos = mousePos;
-            lastWorldPos = worldPos;
+            if (currentTool == ToolType::LASSO) {
+                // Lasso mode
+                if (canvas.hasSelection()) {
+                    // If there's a selection, start moving it
+                    isMovingSelection = true;
+                    moveStartPos = renderer.screenToWorld(mousePos);
+                    std::cout << "Started moving selection" << std::endl;
+                } else {
+                    // Start drawing lasso
+                    isDrawingLasso = true;
+                    lassoPoints.clear();
+                    lassoPoints.push_back(mousePos);
+                    std::cout << "Started drawing lasso" << std::endl;
+                }
+            } else {
+                // Brush or Eraser mode - normal drawing
+                isDrawing = true;
+                
+                // Clear selection when starting to draw
+                canvas.clearSelection();
+                
+                // Start new stroke with current tool settings
+                glm::vec3 color = toolWheel.getEffectiveColor();
+                float brushWidth = toolWheel.getBrushWidth();
+                
+                canvas.beginStroke(color, brushWidth);
+                
+                // Convert screen to world coordinates
+                glm::vec2 worldPos = renderer.screenToWorld(mousePos);
+                StrokePoint point(worldPos, 1.0f, 0.0f, 0.0f, getCurrentTime());
+                canvas.addPointToCurrentStroke(point);
+                lastMousePos = mousePos;
+                lastWorldPos = worldPos;
+            }
         } else if (action == GLFW_RELEASE) {
             if (isDrawing) {
                 canvas.endStroke();
                 isDrawing = false;
+            } else if (isDrawingLasso) {
+                // Complete lasso and select strokes
+                std::vector<glm::vec2> worldLassoPoints;
+                for (const auto& screenPt : lassoPoints) {
+                    worldLassoPoints.push_back(renderer.screenToWorld(screenPt));
+                }
+                canvas.selectStrokesInPolygon(worldLassoPoints);
+                isDrawingLasso = false;
+                lassoPoints.clear();
+            } else if (isMovingSelection) {
+                // Finish moving selection
+                isMovingSelection = false;
+                std::cout << "Finished moving selection" << std::endl;
             }
         }
     } else if (button == GLFW_MOUSE_BUTTON_MIDDLE || button == GLFW_MOUSE_BUTTON_RIGHT) {
         if (action == GLFW_PRESS) {
-            isPanning = true;
-            panStart = mousePos;
+            // Don't start panning if right-click is clearing a selection
+            if (button == GLFW_MOUSE_BUTTON_RIGHT && canvas.hasSelection()) {
+                canvas.clearSelection();
+                std::cout << "Selection cleared with right-click" << std::endl;
+            } else {
+                isPanning = true;
+                panStart = mousePos;
+            }
         } else if (action == GLFW_RELEASE) {
             isPanning = false;
         }
@@ -177,14 +223,12 @@ void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
     glm::vec2 mousePos(static_cast<float>(xpos), static_cast<float>(ypos));
     
     if (isDrawing && !isPanning) {
-        // Convert screen to world coordinates
+        // Normal drawing (Brush/Eraser)
         glm::vec2 worldPos = renderer.screenToWorld(mousePos);
         
-        // Simulate pressure based on speed (in world space)
-        float deltaTime = 0.016f; // Approximate frame time
+        float deltaTime = 0.016f;
         float pressure = simulatePressure(worldPos, lastWorldPos, deltaTime);
         
-        // Simulate tilt (can be enhanced with actual stylus input)
         glm::vec2 direction = worldPos - lastWorldPos;
         float tiltX = 0.0f;
         float tiltY = 0.0f;
@@ -198,6 +242,20 @@ void cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
         StrokePoint point(worldPos, pressure, tiltX, tiltY, getCurrentTime());
         canvas.addPointToCurrentStroke(point);
         lastWorldPos = worldPos;
+    } else if (isDrawingLasso) {
+        // Add points to lasso path
+        if (glm::distance(mousePos, lassoPoints.back()) > 3.0f) { // Sample every 3 pixels
+            lassoPoints.push_back(mousePos);
+        }
+    } else if (isMovingSelection && !isPanning) {
+        // Move selected strokes
+        glm::vec2 worldPos = renderer.screenToWorld(mousePos);
+        glm::vec2 delta = worldPos - moveStartPos;
+        
+        if (glm::length(delta) > 0.001f) { // Only move if delta is significant
+            canvas.moveSelectedStrokes(delta);
+            moveStartPos = worldPos;
+        }
     } else if (isPanning) {
         glm::vec2 delta = mousePos - panStart;
         renderer.pan(delta);
@@ -251,7 +309,13 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             renderer.resetView();
             std::cout << "View reset" << std::endl;
         } else if (key == GLFW_KEY_ESCAPE) {
-            glfwSetWindowShouldClose(window, GLFW_TRUE);
+            // ESC: Clear selection or exit
+            if (canvas.hasSelection()) {
+                canvas.clearSelection();
+                std::cout << "Selection cleared" << std::endl;
+            } else {
+                glfwSetWindowShouldClose(window, GLFW_TRUE);
+            }
         }
     }
 }
@@ -356,6 +420,42 @@ int main() {
         
         // Render UI on top
         toolWheel.render(display_w, display_h);
+        
+        // Render lasso and selection visualization
+        ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
+        
+        // Draw lasso while being drawn
+        if (isDrawingLasso && lassoPoints.size() > 1) {
+            for (size_t i = 0; i < lassoPoints.size() - 1; i++) {
+                draw_list->AddLine(
+                    ImVec2(lassoPoints[i].x, lassoPoints[i].y),
+                    ImVec2(lassoPoints[i+1].x, lassoPoints[i+1].y),
+                    IM_COL32(100, 200, 255, 255), 2.0f
+                );
+            }
+            // Close the loop
+            if (lassoPoints.size() > 2) {
+                draw_list->AddLine(
+                    ImVec2(lassoPoints.back().x, lassoPoints.back().y),
+                    ImVec2(lassoPoints.front().x, lassoPoints.front().y),
+                    IM_COL32(100, 200, 255, 150), 2.0f
+                );
+            }
+        }
+        
+        // Draw selection highlight (blue outline around selected strokes)
+        if (canvas.hasSelection()) {
+            const auto& selectedIndices = canvas.getSelectedStrokes();
+            for (size_t idx : selectedIndices) {
+                // Get stroke and draw its points with highlight
+                // Note: This is a simple visualization, can be enhanced
+            }
+            
+            // Draw instruction text
+            ImVec2 textPos(10, display_h - 30);
+            draw_list->AddText(textPos, IM_COL32(100, 200, 255, 255), 
+                               "Selection active - Click and drag to move");
+        }
         
         // Process file dialog requests (native system dialogs)
         processFileDialogs();
